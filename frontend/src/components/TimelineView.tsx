@@ -1,253 +1,177 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import {
   Calendar,
-  Users,
-  Quote,
   Clock,
   ChevronDown,
   ChevronUp,
   Search,
-  CheckCircle2,
-  Filter,
-  Copy,
+  Quote,
   Check,
-  Sparkles,
-  Zap,
+  Copy,
+  ArrowDown,
+  CheckCircle2,
+  Users,
 } from 'lucide-react';
 import { TimelineEvent } from '@/lib/types';
 
 interface TimelineViewProps {
   timeline: TimelineEvent[];
+  onSelectEvent?: (event: TimelineEvent) => void;
 }
 
-export default function TimelineView({ timeline }: TimelineViewProps) {
+export default function TimelineView({ timeline, onSelectEvent }: TimelineViewProps) {
   const [expandedIndices, setExpandedIndices] = useState<Record<number, boolean>>({});
-  const [filterType, setFilterType] = useState<'all' | 'decisions' | 'citations'>('all');
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
 
-  const toggleExpand = (idx: number) => {
+  const toggleExpand = (idx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
     setExpandedIndices((prev) => ({
       ...prev,
       [idx]: !prev[idx],
     }));
   };
 
-  const handleExpandAll = () => {
-    const all: Record<number, boolean> = {};
-    timeline.forEach((_, i) => (all[i] = true));
-    setExpandedIndices(all);
+  const handleSelect = (event: TimelineEvent, idx: number) => {
+    setSelectedIdx(idx);
+    if (onSelectEvent) {
+      onSelectEvent(event);
+    }
   };
 
-  const handleCollapseAll = () => {
-    setExpandedIndices({});
-  };
-
-  const handleCopyQuote = (quote: string, idx: number) => {
-    navigator.clipboard.writeText(quote);
-    setCopiedIdx(idx);
-    setTimeout(() => setCopiedIdx(null), 2000);
-  };
-
-  const filteredTimeline = useMemo(() => {
-    if (!timeline) return [];
-
-    return timeline.filter((item) => {
-      if (filterType === 'decisions' && !item.decision) return false;
-      if (filterType === 'citations' && !item.evidence_quote) return false;
-
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase();
-        const inTitle = item.title.toLowerCase().includes(q);
-        const inDesc = item.description.toLowerCase().includes(q);
-        const inDate = item.date.toLowerCase().includes(q);
-        const inActors = (item.actors || []).some((a) => a.toLowerCase().includes(q));
-        if (!inTitle && !inDesc && !inDate && !inActors) return false;
-      }
-
-      return true;
-    });
-  }, [timeline, filterType, searchTerm]);
+  const filtered = (timeline || []).filter((item) => {
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      item.title.toLowerCase().includes(q) ||
+      item.description.toLowerCase().includes(q) ||
+      item.date.toLowerCase().includes(q)
+    );
+  });
 
   if (!timeline || timeline.length === 0) {
     return (
-      <div className="forensic-card rounded-xl p-8 text-center font-mono text-xs text-slate-500">
-        NO CHRONOLOGICAL MILESTONES EXTRACTED FOR THIS QUERY
+      <div className="p-8 text-center rounded-xl bg-[#101722] border border-[#243044] font-mono text-xs text-[#94A3B8]">
+        NO CHRONOLOGICAL DECISION MILESTONES EXTRACTED FOR THIS QUERY
       </div>
     );
   }
 
   return (
-    <div className="forensic-card rounded-xl p-6 relative corner-ticks shadow-2xl">
+    <div className="rounded-xl p-6 bg-[#101722] border border-[#243044] shadow-xl space-y-5">
       
-      {/* Blueprint Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-[#1E2C54]">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-violet-600/20 rounded-lg text-cyan-300 border border-cyan-500/40 shadow-md shadow-cyan-500/10">
-            <Clock className="w-4 h-4 animate-spin-slow" />
+      {/* Timeline Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#243044]">
+        <div className="flex items-center space-x-2.5">
+          <div className="p-1.5 rounded-lg bg-[#00F2FE]/10 text-[#00F2FE] border border-[#00F2FE]/30">
+            <Clock className="w-4 h-4" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                CHRONOLOGICAL RECONSTRUCTION TIMELINE
-              </h3>
-              <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 font-bold shadow-xs">
-                {timeline.length} MILESTONES
-              </span>
-            </div>
-            <p className="text-[11px] font-mono text-slate-400">
-              CAUSAL SEQUENCE OF DECISIONS, INCIDENTS & ARCHITECTURAL PIVOTS
+            <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+              DECISION TIMELINE
+            </h3>
+            <p className="text-[11px] font-mono text-[#94A3B8]">
+              CHRONOLOGICAL SEQUENCE OF PROPOSALS, COMMITTEES & DEPLOYMENTS
             </p>
           </div>
         </div>
 
-        {/* Global Expand / Collapse */}
-        <div className="flex items-center space-x-2 text-xs font-mono">
-          <button
-            onClick={handleExpandAll}
-            className="text-slate-400 hover:text-white px-2.5 py-1 rounded bg-[#0A0F24] border border-[#1E2C54] hover:border-cyan-500/50 transition-colors active:scale-95"
-          >
-            Expand All
-          </button>
-          <button
-            onClick={handleCollapseAll}
-            className="text-slate-400 hover:text-white px-2.5 py-1 rounded bg-[#0A0F24] border border-[#1E2C54] hover:border-cyan-500/50 transition-colors active:scale-95"
-          >
-            Collapse All
-          </button>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-6 text-xs font-mono">
-        <div className="flex items-center space-x-1.5">
-          <button
-            onClick={() => setFilterType('all')}
-            className={`px-3 py-1 rounded-md transition-all active:scale-95 ${
-              filterType === 'all'
-                ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/20'
-                : 'bg-[#0A0F24] text-slate-400 hover:text-slate-200 border border-[#1E2C54]'
-            }`}
-          >
-            All ({timeline.length})
-          </button>
-          <button
-            onClick={() => setFilterType('decisions')}
-            className={`px-3 py-1 rounded-md transition-all active:scale-95 ${
-              filterType === 'decisions'
-                ? 'bg-gradient-to-r from-emerald-400 to-cyan-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/20'
-                : 'bg-[#0A0F24] text-slate-400 hover:text-slate-200 border border-[#1E2C54]'
-            }`}
-          >
-            Decisions Only ({timeline.filter((t) => t.decision).length})
-          </button>
-          <button
-            onClick={() => setFilterType('citations')}
-            className={`px-3 py-1 rounded-md transition-all active:scale-95 ${
-              filterType === 'citations'
-                ? 'bg-gradient-to-r from-violet-400 to-pink-500 text-slate-950 font-bold shadow-lg shadow-violet-500/20'
-                : 'bg-[#0A0F24] text-slate-400 hover:text-slate-200 border border-[#1E2C54]'
-            }`}
-          >
-            With Excerpts ({timeline.filter((t) => t.evidence_quote).length})
-          </button>
-        </div>
-
+        {/* Search */}
         <div className="relative">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Filter timeline..."
-            className="w-40 sm:w-48 pl-7 pr-2 py-1.5 bg-[#040714] border border-[#1E2C54] rounded-md text-slate-200 placeholder:text-slate-500 text-xs font-mono focus:outline-none focus:border-cyan-400 transition-all"
+            placeholder="Search timeline..."
+            className="w-40 sm:w-48 pl-7 pr-2 py-1 bg-[#05070D] border border-[#243044] rounded text-white text-xs font-mono placeholder:text-[#64748B] focus:outline-none focus:border-[#00F2FE]"
           />
-          <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2 top-2" />
+          <Search className="w-3.5 h-3.5 text-[#64748B] absolute left-2 top-2" />
         </div>
       </div>
 
-      {/* Vertical Stepped Timeline with Flowing Light Bead Animation */}
-      <div className="relative pl-7 space-y-6 before:content-[''] before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-gradient-to-b before:from-cyan-400 before:via-violet-500 before:to-emerald-400 timeline-track">
-        {filteredTimeline.map((event, idx) => {
+      {/* Stepped Timeline */}
+      <div className="relative pl-7 space-y-5 before:content-[''] before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#243044]">
+        {filtered.map((event, idx) => {
+          const isSelected = selectedIdx === idx;
           const isExpanded = !!expandedIndices[idx];
-          const hasDecision = !!event.decision;
 
           return (
-            <div key={idx} className="relative group transition-all duration-300">
-              {/* Sonar Ripple Marker Node */}
+            <div
+              key={idx}
+              onClick={() => handleSelect(event, idx)}
+              className="relative group cursor-pointer transition-all"
+            >
+              {/* Stepped Marker Node */}
               <div
-                className={`absolute -left-7 top-1.5 w-6 h-6 rounded-full bg-[#0A0F24] border-2 flex items-center justify-center transition-all duration-300 shadow-lg ${
-                  hasDecision
-                    ? 'border-emerald-400 sonar-emitter-emerald group-hover:scale-125'
-                    : 'border-cyan-400 sonar-emitter group-hover:scale-125'
+                className={`absolute -left-7 top-2 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all bg-[#0B101A] ${
+                  isSelected
+                    ? 'border-[#00F2FE] scale-110 shadow-md shadow-[#00F2FE]/30'
+                    : 'border-[#243044] group-hover:border-[#00F2FE]'
                 }`}
               >
                 <span
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    hasDecision ? 'bg-emerald-400' : 'bg-cyan-400'
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isSelected ? 'bg-[#00F2FE]' : 'bg-[#94A3B8] group-hover:bg-[#00F2FE]'
                   }`}
                 ></span>
               </div>
 
-              {/* Event Content Card with Elevation on Hover */}
-              <div className="bg-[#0A0F24] border border-[#1E2C54] hover:border-cyan-500/50 rounded-xl p-5 transition-all duration-300 shadow-md hover:shadow-xl hover:shadow-cyan-500/5 hover:-translate-y-0.5">
-                
-                {/* Milestone Top Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+              {/* Event Card */}
+              <div
+                className={`p-4 rounded-xl border transition-all ${
+                  isSelected
+                    ? 'bg-[#151D29] border-[#00F2FE]/60 shadow-lg'
+                    : 'bg-[#0B101A] border-[#243044] hover:border-[#334155]'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center space-x-2">
-                    <span className="flex items-center space-x-1.5 text-xs font-mono font-semibold text-cyan-300 bg-cyan-500/10 px-2.5 py-0.5 rounded border border-cyan-400/30 shadow-xs">
-                      <Calendar className="w-3 h-3 text-cyan-400" />
-                      <span>{event.date}</span>
+                    <span className="text-xs font-mono font-bold text-[#00F2FE] bg-[#00F2FE]/10 px-2 py-0.5 rounded border border-[#00F2FE]/30">
+                      {event.date}
                     </span>
-
                     {event.document_title && (
-                      <span className="text-[11px] font-mono text-slate-400 truncate max-w-xs">
-                        via <span className="text-slate-300">{event.document_title}</span>
+                      <span className="text-[11px] font-mono text-[#94A3B8] truncate max-w-xs">
+                        via {event.document_title}
                       </span>
                     )}
                   </div>
 
                   <button
-                    onClick={() => toggleExpand(idx)}
-                    className="text-slate-400 hover:text-white p-1 rounded hover:bg-white/5 transition-colors"
+                    onClick={(e) => toggleExpand(idx, e)}
+                    className="text-[#94A3B8] hover:text-white p-1"
                   >
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
                 </div>
 
-                {/* Milestone Title */}
-                <h4 className="text-sm font-bold text-white mb-2 leading-snug">
+                <h4 className="text-xs font-bold text-white font-sans mb-1">
                   {event.title}
                 </h4>
 
-                {/* Event Description */}
-                <p className="text-xs text-slate-300 leading-relaxed font-sans mb-3">
+                <p className="text-[11px] text-[#94A3B8] font-sans leading-relaxed mb-2">
                   {event.description}
                 </p>
 
-                {/* Registered Decision Callout with Glow Border */}
+                {/* Explicit Decision Tag */}
                 {event.decision && (
-                  <div className="p-3.5 rounded-lg bg-[#071617] border-l-4 border-emerald-400 border border-emerald-900/50 mb-3 shadow-lg shadow-emerald-950/30">
-                    <span className="text-[10px] font-mono uppercase text-emerald-400 font-bold block mb-1 flex items-center space-x-1.5">
-                      <Zap className="w-3 h-3 text-emerald-400 animate-pulse" />
-                      <span>DECISION REGISTERED // ARCHITECTURAL COMMIT:</span>
-                    </span>
-                    <p className="text-xs font-semibold text-emerald-100">
-                      {event.decision}
-                    </p>
+                  <div className="p-2 rounded bg-[#101722] border-l-2 border-[#10B981] border border-[#243044] text-[11px] text-slate-200 mb-2">
+                    <strong className="text-[#10B981] block text-[10px] font-mono uppercase">
+                      Decision Commit:
+                    </strong>
+                    {event.decision}
                   </div>
                 )}
 
-                {/* Actors / Stakeholders */}
+                {/* Actors Involved */}
                 {event.actors && event.actors.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-400 font-mono">
-                    <Users className="w-3.5 h-3.5 text-violet-400 shrink-0 mr-1" />
-                    <span className="text-[11px] text-slate-500 mr-1">Stakeholders:</span>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-mono text-[#94A3B8]">
+                    <span className="text-[#64748B]">Stakeholders:</span>
                     {event.actors.map((actor, aIdx) => (
                       <span
                         key={aIdx}
-                        className="px-2 py-0.5 rounded bg-[#101938] border border-[#202E5C] text-[11px] text-violet-200 transition-all hover:border-violet-400"
+                        className="px-1.5 py-0.2 rounded bg-[#151D29] border border-[#243044] text-slate-200"
                       >
                         {actor}
                       </span>
@@ -255,39 +179,12 @@ export default function TimelineView({ timeline }: TimelineViewProps) {
                   </div>
                 )}
 
-                {/* Expandable Direct Evidence Quote */}
-                {event.evidence_quote && (
-                  <div
-                    className={`mt-3 pt-3 border-t border-dashed border-[#1E2C54] transition-all ${
-                      isExpanded ? 'block animate-in fade-in duration-200' : 'hidden'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2 text-xs text-slate-200 italic bg-[#040714] p-3.5 rounded-lg border border-[#1E2C54]">
-                      <div className="flex items-start space-x-2">
-                        <Quote className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5 not-italic" />
-                        <div>
-                          <span className="text-[10px] font-mono uppercase text-slate-400 not-italic block mb-0.5">
-                            Verbatim Record Excerpt:
-                          </span>
-                          <span className="leading-relaxed">&ldquo;{event.evidence_quote}&rdquo;</span>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => handleCopyQuote(event.evidence_quote!, idx)}
-                        className="text-slate-400 hover:text-white p-1 rounded shrink-0 not-italic active:scale-90 transition-all"
-                        title="Copy excerpt"
-                      >
-                        {copiedIdx === idx ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
+                {/* Expandable Quote Excerpt */}
+                {isExpanded && event.evidence_quote && (
+                  <div className="mt-2.5 pt-2 border-t border-[#243044] text-[11px] text-[#94A3B8] font-sans italic bg-[#05070D] p-2.5 rounded border border-[#243044]">
+                    &ldquo;{event.evidence_quote}&rdquo;
                   </div>
                 )}
-
               </div>
             </div>
           );

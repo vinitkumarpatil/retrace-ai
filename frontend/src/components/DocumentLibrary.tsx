@@ -1,193 +1,244 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { X, FileText, Calendar, Database, Search, Layers, ExternalLink, ShieldCheck } from 'lucide-react';
+import { X, Search, FileText, Calendar, Filter, ArrowUpDown, ChevronLeft, ChevronRight, Download, Eye, Layers } from 'lucide-react';
 import { DocumentItem } from '@/lib/types';
 
 interface DocumentLibraryProps {
   isOpen: boolean;
   onClose: () => void;
   documents: DocumentItem[];
+  onInspectDocument?: (doc: DocumentItem) => void;
 }
 
-export default function DocumentLibrary({ isOpen, onClose, documents }: DocumentLibraryProps) {
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [sourceFilter, setSourceFilter] = useState<string>('all');
-  const [selectedDoc, setSelectedDoc] = useState<DocumentItem | null>(null);
+export default function DocumentLibrary({
+  isOpen,
+  onClose,
+  documents,
+  onInspectDocument,
+}: DocumentLibraryProps) {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
+  const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
 
-  const filteredDocs = useMemo(() => {
-    return (documents || []).filter((doc) => {
-      if (sourceFilter !== 'all' && doc.source_type.toLowerCase() !== sourceFilter.toLowerCase()) {
+  const filteredAndSorted = useMemo(() => {
+    let result = (documents || []).filter((doc) => {
+      if (typeFilter !== 'all' && doc.source_type.toLowerCase() !== typeFilter.toLowerCase()) {
         return false;
       }
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
-        const inTitle = doc.title.toLowerCase().includes(q);
-        const inContent = (doc.content_preview || '').toLowerCase().includes(q);
-        if (!inTitle && !inContent) return false;
+        return (
+          doc.title.toLowerCase().includes(q) ||
+          (doc.content_preview || '').toLowerCase().includes(q)
+        );
       }
       return true;
     });
-  }, [documents, sourceFilter, searchTerm]);
+
+    result.sort((a, b) => {
+      const d1 = new Date(a.created_at).getTime();
+      const d2 = new Date(b.created_at).getTime();
+      return sortOrder === 'asc' ? d1 - d2 : d2 - d1;
+    });
+
+    return result;
+  }, [documents, typeFilter, searchTerm, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSorted.length / pageSize));
+  const paginatedDocs = filteredAndSorted.slice((page - 1) * pageSize, page * pageSize);
 
   if (!isOpen) return null;
 
-  const getSourceBadge = (type: string) => {
-    switch (type.toLowerCase()) {
-      case 'pdf':
-        return 'bg-rose-500/10 text-rose-300 border-rose-500/30';
-      case 'image':
-        return 'bg-purple-500/10 text-purple-300 border-purple-500/30';
-      case 'url':
-        return 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30';
-      default:
-        return 'bg-amber-500/10 text-amber-300 border-amber-500/30';
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-3xl bg-[#0F1623] border border-[#202E48] rounded-xl shadow-2xl overflow-hidden relative corner-ticks flex flex-col max-h-[85vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-5xl bg-[#0B101A] border border-[#243044] rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#202E48] bg-[#141C2D]">
+        <div className="flex items-center justify-between p-4 border-b border-[#243044] bg-[#101722]">
           <div className="flex items-center space-x-2.5">
-            <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-              <Database className="w-4 h-4" />
+            <div className="p-1.5 rounded-lg bg-[#10B981]/10 text-[#10B981] border border-[#10B981]/30">
+              <FileText className="w-4 h-4" />
             </div>
             <div>
               <h2 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                INGESTED ARTIFACT ARCHIVE ({documents.length} RECORDS)
+                HISTORICAL EVIDENCE ARCHIVE ({documents.length} ARTIFACTS)
               </h2>
-              <p className="text-[11px] font-mono text-slate-400">
-                HISTORICAL DECISION DOCUMENTS, CHUNKS & EXTRACTED ENTITIES
+              <p className="text-[11px] font-mono text-[#94A3B8]">
+                SEARCHABLE RECORD STORE & ENTITY EXTRACTION DATABASE
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+            className="text-[#94A3B8] hover:text-white p-1 rounded-md transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Filter & Search Bar */}
-        <div className="p-3.5 border-b border-[#202E48] bg-[#0A0E17] flex flex-wrap items-center justify-between gap-2.5 text-xs font-mono">
-          <div className="flex items-center space-x-1.5">
-            <button
-              onClick={() => setSourceFilter('all')}
-              className={`px-2.5 py-1 rounded transition-all ${
-                sourceFilter === 'all'
-                  ? 'bg-amber-400 text-slate-950 font-bold'
-                  : 'bg-[#141C2D] text-slate-400 hover:text-slate-200 border border-[#202E48]'
-              }`}
-            >
-              All ({documents.length})
-            </button>
-            {['text', 'pdf', 'url'].map((st) => (
+        {/* Filters and Controls */}
+        <div className="p-4 border-b border-[#243044] bg-[#05070D] flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex items-center space-x-2">
+            <span className="text-[#64748B] text-[10px] uppercase">Type:</span>
+            {['all', 'text', 'pdf', 'url'].map((t) => (
               <button
-                key={st}
-                onClick={() => setSourceFilter(st)}
+                key={t}
+                onClick={() => {
+                  setTypeFilter(t);
+                  setPage(1);
+                }}
                 className={`px-2.5 py-1 rounded uppercase transition-all ${
-                  sourceFilter === st
-                    ? 'bg-cyan-400 text-slate-950 font-bold'
-                    : 'bg-[#141C2D] text-slate-400 hover:text-slate-200 border border-[#202E48]'
+                  typeFilter === t
+                    ? 'bg-[#00F2FE] text-black font-bold'
+                    : 'bg-[#101722] text-[#94A3B8] hover:text-white border border-[#243044]'
                 }`}
               >
-                {st}
+                {t}
               </button>
             ))}
           </div>
 
-          <div className="relative">
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search archive..."
-              className="w-44 pl-7 pr-2 py-1 bg-[#101623] border border-[#202E48] rounded text-slate-200 placeholder:text-slate-500 text-xs font-mono focus:outline-none focus:border-amber-400"
-            />
-            <Search className="w-3.5 h-3.5 text-slate-500 absolute left-2 top-2" />
+          <div className="flex items-center space-x-2">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
+                placeholder="Search archive artifacts..."
+                className="w-52 pl-7 pr-2 py-1.5 bg-[#101722] border border-[#243044] rounded text-white text-xs font-mono placeholder:text-[#64748B] focus:outline-none focus:border-[#00F2FE]"
+              />
+              <Search className="w-3.5 h-3.5 text-[#64748B] absolute left-2 top-2" />
+            </div>
+
+            <button
+              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+              className="p-1.5 rounded bg-[#101722] text-[#94A3B8] hover:text-white border border-[#243044] flex items-center space-x-1"
+              title="Toggle sort date"
+            >
+              <ArrowUpDown className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Documents List */}
-        <div className="p-5 overflow-y-auto flex-1 space-y-3 bg-[#0A0E17]">
-          {filteredDocs.length === 0 ? (
-            <div className="p-8 text-center text-xs font-mono text-slate-500">
-              NO MATCHING ARTIFACTS FOUND IN THE KNOWLEDGE STORE.
-            </div>
-          ) : (
-            filteredDocs.map((doc) => {
-              const badgeClass = getSourceBadge(doc.source_type);
-
-              return (
-                <div
-                  key={doc.id}
-                  className="p-4 rounded-xl bg-[#101625] border border-[#202E48] hover:border-[#2E4166] transition-all shadow-md cursor-pointer"
-                  onClick={() => setSelectedDoc(selectedDoc?.id === doc.id ? null : doc)}
-                >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="w-4 h-4 text-cyan-400 shrink-0" />
-                      <h3 className="text-xs font-bold text-white font-mono">
-                        {doc.title}
-                      </h3>
-                    </div>
-
-                    <span
-                      className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border font-semibold ${badgeClass}`}
-                    >
-                      {doc.source_type}
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-300 font-sans line-clamp-2 mb-3 leading-relaxed">
-                    {doc.content_preview}
-                  </p>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400 pt-2.5 border-t border-[#202E48]">
-                    <span className="flex items-center space-x-1.5 text-slate-500">
-                      <Calendar className="w-3 h-3 text-slate-500" />
-                      <span>{new Date(doc.created_at).toLocaleDateString()}</span>
-                    </span>
-
-                    <div className="flex items-center space-x-3 text-cyan-300">
-                      <span>Entities: {doc.entity_count ?? 0}</span>
-                      <span>Milestones: {doc.event_count ?? 0}</span>
-                    </div>
-                  </div>
-
-                  {/* Expanded full preview */}
-                  {selectedDoc?.id === doc.id && (
-                    <div className="mt-3 pt-3 border-t border-dashed border-[#202E48] text-xs font-mono text-slate-300 bg-[#0A0E17] p-3 rounded-lg">
-                      <div className="text-[10px] uppercase text-amber-400 mb-1 font-bold">
-                        RAW PREVIEW EXCERPT:
+        {/* Data Table */}
+        <div className="flex-1 overflow-y-auto bg-[#05070D]">
+          <table className="w-full text-left text-xs font-mono border-collapse">
+            <thead className="bg-[#101722] text-[#94A3B8] text-[10px] uppercase border-b border-[#243044] sticky top-0 z-10">
+              <tr>
+                <th className="py-2.5 px-4">Artifact</th>
+                <th className="py-2.5 px-3">Type</th>
+                <th className="py-2.5 px-3">Date</th>
+                <th className="py-2.5 px-3">Source</th>
+                <th className="py-2.5 px-3">Status</th>
+                <th className="py-2.5 px-3">Evidence</th>
+                <th className="py-2.5 px-4 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#243044]/60">
+              {paginatedDocs.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-[#94A3B8]">
+                    No artifacts matching query found in historical store.
+                  </td>
+                </tr>
+              ) : (
+                paginatedDocs.map((doc) => (
+                  <tr
+                    key={doc.id}
+                    className="hover:bg-[#101722]/80 transition-colors group"
+                  >
+                    {/* Artifact Title */}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center space-x-2">
+                        <FileText className="w-4 h-4 text-[#00F2FE] shrink-0" />
+                        <span className="font-bold text-white font-sans truncate max-w-xs">
+                          {doc.title}
+                        </span>
                       </div>
-                      <div className="whitespace-pre-wrap leading-relaxed text-slate-200 font-mono text-[11px]">
-                        {doc.content_preview}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
+                    </td>
+
+                    {/* Type */}
+                    <td className="py-3 px-3">
+                      <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-[#151D29] border border-[#243044] text-[#00F2FE]">
+                        {doc.source_type}
+                      </span>
+                    </td>
+
+                    {/* Date */}
+                    <td className="py-3 px-3 text-[#94A3B8]">
+                      {new Date(doc.created_at).toLocaleDateString()}
+                    </td>
+
+                    {/* Source */}
+                    <td className="py-3 px-3 text-[#94A3B8] truncate max-w-[120px]">
+                      {doc.metadata?.document_type || doc.source_type}
+                    </td>
+
+                    {/* Status */}
+                    <td className="py-3 px-3">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30">
+                        Indexed
+                      </span>
+                    </td>
+
+                    {/* Evidence */}
+                    <td className="py-3 px-3 text-[#94A3B8]">
+                      {doc.entity_count || 0} entities / {doc.event_count || 0} events
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => {
+                          if (onInspectDocument) {
+                            onInspectDocument(doc);
+                            onClose();
+                          } else {
+                            setPreviewDoc(previewDoc?.id === doc.id ? null : doc);
+                          }
+                        }}
+                        className="px-2.5 py-1 rounded text-[11px] text-[#00F2FE] hover:bg-[#00F2FE]/10 border border-[#00F2FE]/30 transition-all font-bold"
+                      >
+                        Inspect
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
 
-        {/* Footer */}
-        <div className="p-3 border-t border-[#202E48] bg-[#141C2D] flex items-center justify-between">
-          <span className="text-xs font-mono text-slate-400">
-            Vector Embeddings: 768-dim (Gemini)
+        {/* Pagination & Footer */}
+        <div className="p-3.5 border-t border-[#243044] bg-[#101722] flex items-center justify-between text-xs font-mono">
+          <span className="text-[#94A3B8]">
+            Showing page {page} of {totalPages} ({filteredAndSorted.length} artifacts)
           </span>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 text-xs font-mono bg-[#1A253A] border border-[#2B3E60] hover:bg-[#223049] rounded-md text-slate-200 transition-colors"
-          >
-            Close Archive
-          </button>
+
+          <div className="flex items-center space-x-2">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+              className="p-1.5 rounded bg-[#151D29] text-[#94A3B8] hover:text-white disabled:opacity-40 border border-[#243044]"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+              className="p-1.5 rounded bg-[#151D29] text-[#94A3B8] hover:text-white disabled:opacity-40 border border-[#243044]"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
       </div>

@@ -12,22 +12,19 @@ import {
   Filter,
   Layers,
   Globe,
-  Info,
   X,
   Play,
   Pause,
-  Zap,
 } from 'lucide-react';
 import { EntityNode, EntityLink } from '@/lib/types';
 import { getGlobalGraph } from '@/lib/api';
 
-// Dynamically import ForceGraph2D with SSR disabled
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-96 flex flex-col items-center justify-center bg-[#040714] text-xs font-mono text-slate-400">
-      <RefreshCw className="w-7 h-7 animate-spin text-cyan-400 mb-3" />
-      <span className="shimmer-text">INITIALIZING TOPOLOGY ENGINE & GRAPH PHYSICS...</span>
+    <div className="w-full h-80 flex flex-col items-center justify-center bg-[#05070D] text-xs font-mono text-[#94A3B8]">
+      <RefreshCw className="w-6 h-6 animate-spin text-[#00F2FE] mb-2" />
+      <span>INITIALIZING EVIDENCE INVESTIGATION TOPOLOGY...</span>
     </div>
   ),
 });
@@ -36,16 +33,18 @@ interface RelationshipGraphProps {
   nodes: EntityNode[];
   links: EntityLink[];
   allowGlobalToggle?: boolean;
+  onSelectNode?: (node: EntityNode) => void;
 }
 
 export default function RelationshipGraph({
   nodes: initialNodes,
   links: initialLinks,
   allowGlobalToggle = true,
+  onSelectNode,
 }: RelationshipGraphProps) {
   const fgRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [dimensions, setDimensions] = useState({ width: 600, height: 450 });
+  const [dimensions, setDimensions] = useState({ width: 600, height: 420 });
   const [selectedNode, setSelectedNode] = useState<any | null>(null);
   const [filterType, setFilterType] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -55,14 +54,13 @@ export default function RelationshipGraph({
   const [isPaused, setIsPaused] = useState<boolean>(false);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
-  // Resize listener
   useEffect(() => {
     if (!containerRef.current) return;
     const updateDimensions = () => {
       if (containerRef.current) {
         setDimensions({
           width: containerRef.current.clientWidth,
-          height: isFullscreen ? window.innerHeight - 180 : Math.max(420, containerRef.current.clientHeight),
+          height: isFullscreen ? window.innerHeight - 160 : Math.max(380, containerRef.current.clientHeight),
         });
       }
     };
@@ -71,7 +69,6 @@ export default function RelationshipGraph({
     return () => window.removeEventListener('resize', updateDimensions);
   }, [isFullscreen]);
 
-  // Load global graph if toggled
   const handleToggleGlobal = async () => {
     if (!isGlobalMode) {
       if (!globalData) {
@@ -97,21 +94,25 @@ export default function RelationshipGraph({
   const getNodeColor = (type: string) => {
     switch (type?.toLowerCase()) {
       case 'person':
-        return '#00DF89'; // Neon Mint
+      case 'engineer':
+        return '#10B981'; // Emerald
       case 'system':
+      case 'repository':
         return '#00F2FE'; // Electric Cyan
       case 'decision':
-        return '#FBBF24'; // Cyber Amber
+      case 'architecture':
+        return '#F59E0B'; // Amber
       case 'team':
-        return '#A855F7'; // Electric Violet
+      case 'deployment':
+        return '#8B5CF6'; // Violet
+      case 'incident':
       case 'document':
-        return '#FF007A'; // Cyber Pink
+        return '#EF4444'; // Red
       default:
-        return '#38BDF8'; // Sky Blue
+        return '#94A3B8';
     }
   };
 
-  // Filtered graph dataset
   const graphData = useMemo(() => {
     const validNodes = (activeNodes || []).map((n) => ({
       id: n.name || n.id,
@@ -119,7 +120,7 @@ export default function RelationshipGraph({
       type: n.type || 'concept',
       role: (n as any).role || '',
       description: n.description || '',
-      val: n.type === 'decision' || n.type === 'system' ? 5 : 3,
+      val: n.type === 'decision' || n.type === 'system' ? 4.5 : 2.5,
       color: getNodeColor(n.type),
     }));
 
@@ -140,7 +141,9 @@ export default function RelationshipGraph({
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      filteredNodes = filteredNodes.filter((n) => n.name.toLowerCase().includes(q) || n.description.toLowerCase().includes(q));
+      filteredNodes = filteredNodes.filter(
+        (n) => n.name.toLowerCase().includes(q) || n.description.toLowerCase().includes(q)
+      );
     }
 
     const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
@@ -150,6 +153,18 @@ export default function RelationshipGraph({
 
     return { nodes: filteredNodes, links: filteredLinks };
   }, [activeNodes, activeLinks, filterType, searchQuery]);
+
+  const handleNodeClick = (node: any) => {
+    setSelectedNode(node);
+    if (onSelectNode) {
+      onSelectNode({
+        id: node.id,
+        name: node.name,
+        type: node.type,
+        description: node.description,
+      });
+    }
+  };
 
   const handleZoomIn = () => {
     if (fgRef.current) fgRef.current.zoom(fgRef.current.zoom() * 1.3, 400);
@@ -163,123 +178,102 @@ export default function RelationshipGraph({
     if (fgRef.current) fgRef.current.zoomToFit(400, 40);
   };
 
-  const togglePause = () => {
-    if (fgRef.current) {
-      if (isPaused) {
-        fgRef.current.resumeAnimation();
-        setIsPaused(false);
-      } else {
-        fgRef.current.pauseAnimation();
-        setIsPaused(true);
-      }
-    }
-  };
-
   if (!initialNodes || initialNodes.length === 0) {
     return (
-      <div className="forensic-card rounded-xl border border-[#1E2C54] p-6 relative">
-        <div className="p-8 text-center font-mono text-xs text-slate-500">
-          NO ENTITY RELATIONSHIPS EXTRACTED FOR CURRENT QUERY
-        </div>
+      <div className="p-8 text-center rounded-xl bg-[#101722] border border-[#243044] font-mono text-xs text-[#94A3B8]">
+        NO EVIDENCE RELATIONSHIPS FOUND IN THIS QUERY SCOPE
       </div>
     );
   }
 
   return (
     <div
-      className={`forensic-card rounded-xl p-5 relative corner-ticks shadow-2xl flex flex-col transition-all duration-300 ${
-        isFullscreen ? 'fixed inset-4 z-50 bg-[#040714]' : ''
+      className={`rounded-xl p-5 bg-[#101722] border border-[#243044] shadow-xl flex flex-col space-y-3 ${
+        isFullscreen ? 'fixed inset-4 z-50 bg-[#05070D]' : ''
       }`}
     >
       {/* Topology Header */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 mb-3 border-b border-[#1E2C54]">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-3 border-b border-[#243044]">
         <div className="flex items-center space-x-2.5">
-          <div className="p-2 bg-gradient-to-br from-cyan-500/20 to-violet-600/20 rounded-lg text-cyan-300 border border-cyan-500/40 shadow-md shadow-cyan-500/10">
-            <Share2 className="w-4 h-4 animate-spin-slow" />
+          <div className="p-1.5 rounded-lg bg-[#8B5CF6]/10 text-[#8B5CF6] border border-[#8B5CF6]/30">
+            <Share2 className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
               <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
-                {isGlobalMode ? 'GLOBAL KNOWLEDGE TOPOLOGY' : 'QUERY ENTITY GRAPH'}
+                {isGlobalMode ? 'GLOBAL KNOWLEDGE GRAPH' : 'EVIDENCE TOPOLOGY GRAPH'}
               </h3>
-              <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-400/30 font-bold">
+              <span className="text-[10px] font-mono px-2 py-0.2 rounded-full bg-[#00F2FE]/10 text-[#00F2FE] border border-[#00F2FE]/30 font-bold">
                 {graphData.nodes.length} NODES
               </span>
             </div>
-            <p className="text-[11px] font-mono text-slate-400">
-              FORCE-DIRECTED CAUSAL & ARCHITECTURAL MAPPING
+            <p className="text-[11px] font-mono text-[#94A3B8]">
+              CAUSAL INVESTIGATION NETWORK (ENGINEER ➔ ADR ➔ REPO ➔ DEPLOYMENT)
             </p>
           </div>
         </div>
 
-        {/* Global / Subgraph Toggle */}
-        {allowGlobalToggle && (
-          <button
-            onClick={handleToggleGlobal}
-            disabled={isLoadingGlobal}
-            className={`px-3 py-1.5 text-xs font-mono rounded-lg border flex items-center space-x-1.5 transition-all shadow-sm active:scale-95 ${
-              isGlobalMode
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400/50 shadow-cyan-500/10 font-bold'
-                : 'bg-[#0A0F24] text-slate-300 hover:text-white border-[#1E2C54]'
-            }`}
-          >
-            <Globe className={`w-3.5 h-3.5 ${isLoadingGlobal ? 'animate-spin text-cyan-400' : 'text-cyan-400'}`} />
-            <span>{isGlobalMode ? 'View Subgraph' : 'Explore Global'}</span>
-          </button>
-        )}
+        {/* Global Toggle & Controls */}
+        <div className="flex items-center space-x-1.5">
+          {allowGlobalToggle && (
+            <button
+              onClick={handleToggleGlobal}
+              disabled={isLoadingGlobal}
+              className={`px-2.5 py-1 text-xs font-mono rounded-md border flex items-center space-x-1 transition-all ${
+                isGlobalMode
+                  ? 'bg-[#00F2FE]/15 text-[#00F2FE] border-[#00F2FE]/40 font-bold'
+                  : 'bg-[#151D29] text-[#94A3B8] hover:text-white border-[#243044]'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>{isGlobalMode ? 'Subgraph' : 'Global Graph'}</span>
+            </button>
+          )}
 
-        {/* Canvas Controls */}
-        <div className="flex items-center space-x-1 bg-[#0A0F24] p-1 rounded-lg border border-[#1E2C54]">
-          <button
-            onClick={togglePause}
-            className="p-1 text-slate-400 hover:text-white rounded"
-            title={isPaused ? 'Resume Layout' : 'Freeze Layout'}
-          >
-            {isPaused ? <Play className="w-3.5 h-3.5 text-emerald-400" /> : <Pause className="w-3.5 h-3.5" />}
-          </button>
-          <button
-            onClick={handleZoomIn}
-            className="p-1 text-slate-400 hover:text-white rounded"
-            title="Zoom In"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleZoomOut}
-            className="p-1 text-slate-400 hover:text-white rounded"
-            title="Zoom Out"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={handleFit}
-            className="p-1 text-slate-400 hover:text-white rounded"
-            title="Center Graph"
-          >
-            <Maximize2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1 text-slate-400 hover:text-cyan-400 rounded"
-            title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-          >
-            <Layers className="w-3.5 h-3.5" />
-          </button>
+          <div className="flex items-center space-x-1 bg-[#05070D] p-1 rounded-md border border-[#243044]">
+            <button
+              onClick={handleZoomIn}
+              className="p-1 text-[#94A3B8] hover:text-white rounded"
+              title="Zoom In"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleZoomOut}
+              className="p-1 text-[#94A3B8] hover:text-white rounded"
+              title="Zoom Out"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={handleFit}
+              className="p-1 text-[#94A3B8] hover:text-white rounded"
+              title="Center Graph"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="p-1 text-[#94A3B8] hover:text-[#00F2FE] rounded"
+              title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+            >
+              <Layers className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 text-xs font-mono">
-        {/* Type Filter Pills */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
         <div className="flex flex-wrap items-center gap-1.5">
-          {['all', 'person', 'system', 'decision', 'team'].map((t) => (
+          {['all', 'decision', 'person', 'system', 'team'].map((t) => (
             <button
               key={t}
               onClick={() => setFilterType(t)}
-              className={`px-2.5 py-0.5 rounded-md text-[11px] uppercase transition-all duration-200 active:scale-95 ${
+              className={`px-2 py-0.5 rounded text-[10px] uppercase transition-all ${
                 filterType === t
-                  ? 'bg-gradient-to-r from-cyan-400 to-violet-500 text-slate-950 font-bold shadow-md shadow-cyan-500/20'
-                  : 'bg-[#0A0F24] text-slate-400 hover:text-slate-200 border border-[#1E2C54]'
+                  ? 'bg-[#00F2FE] text-black font-bold'
+                  : 'bg-[#0B101A] text-[#94A3B8] hover:text-white border border-[#243044]'
               }`}
             >
               {t}
@@ -287,32 +281,23 @@ export default function RelationshipGraph({
           ))}
         </div>
 
-        {/* Node Search */}
         <div className="relative">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search entity..."
-            className="w-36 sm:w-44 pl-7 pr-2 py-1 bg-[#040714] border border-[#1E2C54] rounded-md text-slate-200 placeholder:text-slate-500 text-xs font-mono focus:outline-none focus:border-cyan-400 transition-all"
+            className="w-36 sm:w-44 pl-7 pr-2 py-1 bg-[#05070D] border border-[#243044] rounded text-white text-xs font-mono placeholder:text-[#64748B] focus:outline-none focus:border-[#00F2FE]"
           />
-          <Search className="w-3 h-3 text-slate-500 absolute left-2.5 top-2" />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-1.5 top-1.5 text-slate-500 hover:text-white"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
+          <Search className="w-3.5 h-3.5 text-[#64748B] absolute left-2 top-1.5" />
         </div>
       </div>
 
-      {/* Graph Visualizer Canvas Area */}
+      {/* Canvas */}
       <div
         ref={containerRef}
-        className={`w-full bg-[#040714] rounded-xl border border-[#1E2C54] overflow-hidden relative shadow-inner ${
-          isFullscreen ? 'flex-1' : 'h-96'
+        className={`w-full bg-[#05070D] rounded-xl border border-[#243044] overflow-hidden relative ${
+          isFullscreen ? 'flex-1' : 'h-88'
         }`}
       >
         <ForceGraph2D
@@ -320,85 +305,67 @@ export default function RelationshipGraph({
           width={dimensions.width}
           height={dimensions.height}
           graphData={graphData}
-          backgroundColor="#040714"
+          backgroundColor="#05070D"
           nodeLabel={(node: any) => `${node.name} [${node.type?.toUpperCase()}]\n${node.description || ''}`}
           nodeColor={(node: any) => node.color}
-          nodeRelSize={6}
-          linkColor={() => 'rgba(0, 242, 254, 0.25)'}
+          nodeRelSize={5}
+          linkColor={() => 'rgba(36, 48, 68, 0.8)'}
           linkDirectionalArrowLength={4}
           linkDirectionalArrowRelPos={1}
-          linkCurvature={0.15}
+          linkCurvature={0.12}
           linkLabel={(link: any) => link.relation || ''}
-          onNodeClick={(node: any) => setSelectedNode(node)}
+          onNodeClick={handleNodeClick}
           cooldownTicks={120}
-          onEngineStop={() => {
-            if (!isPaused) handleFit();
-          }}
+          onEngineStop={() => handleFit()}
         />
 
-        {/* Selected Node Details HUD */}
+        {/* Selected Node HUD */}
         {selectedNode && (
-          <div className="absolute bottom-3 left-3 right-3 bg-[#0A0F24]/95 backdrop-blur-md p-4 rounded-xl border border-cyan-400/50 shadow-2xl text-xs font-mono animate-in fade-in">
-            <div className="flex items-center justify-between">
+          <div className="absolute bottom-3 left-3 right-3 bg-[#101722]/95 backdrop-blur-md p-3 rounded-lg border border-[#00F2FE]/40 shadow-xl text-xs font-mono flex items-center justify-between">
+            <div className="space-y-0.5">
               <div className="flex items-center space-x-2">
                 <span className="font-bold text-white text-sm">{selectedNode.name}</span>
-                <span
-                  className="text-[10px] px-2 py-0.5 rounded uppercase font-bold"
-                  style={{
-                    backgroundColor: `${selectedNode.color}22`,
-                    color: selectedNode.color,
-                    borderColor: `${selectedNode.color}55`,
-                    borderWidth: 1,
-                  }}
-                >
+                <span className="text-[10px] text-[#00F2FE] uppercase font-bold px-1.5 py-0.2 rounded bg-[#00F2FE]/10 border border-[#00F2FE]/30">
                   {selectedNode.type}
                 </span>
-                {selectedNode.role && (
-                  <span className="text-[10px] text-slate-400 hidden sm:inline">
-                    ({selectedNode.role})
-                  </span>
-                )}
               </div>
-
-              <button
-                onClick={() => setSelectedNode(null)}
-                className="text-slate-400 hover:text-white p-1"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <p className="text-[11px] text-[#94A3B8] font-sans truncate max-w-lg">
+                {selectedNode.description || 'Entity actively correlated in evidence graph.'}
+              </p>
             </div>
 
-            {selectedNode.description && (
-              <p className="text-slate-300 mt-2 font-sans text-xs leading-relaxed">
-                {selectedNode.description}
-              </p>
-            )}
+            <button
+              onClick={() => setSelectedNode(null)}
+              className="text-[#94A3B8] hover:text-white p-1"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
       </div>
 
-      {/* Legend Footer */}
-      <div className="mt-3 pt-2.5 border-t border-[#1E2C54] flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-slate-400">
+      {/* Legend */}
+      <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-mono text-[#94A3B8] pt-1">
         <div className="flex items-center space-x-3">
           <span className="flex items-center space-x-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#00DF89] shadow-xs"></span>
-            <span>Person</span>
+            <span className="w-2 h-2 rounded-full bg-[#10B981]"></span>
+            <span>Engineer / Person</span>
           </span>
           <span className="flex items-center space-x-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#00F2FE] shadow-xs"></span>
-            <span>System</span>
+            <span className="w-2 h-2 rounded-full bg-[#00F2FE]"></span>
+            <span>System / Repo</span>
           </span>
           <span className="flex items-center space-x-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#FBBF24] shadow-xs"></span>
-            <span>Decision</span>
+            <span className="w-2 h-2 rounded-full bg-[#F59E0B]"></span>
+            <span>Decision / ADR</span>
           </span>
           <span className="flex items-center space-x-1">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#A855F7] shadow-xs"></span>
-            <span>Team</span>
+            <span className="w-2 h-2 rounded-full bg-[#8B5CF6]"></span>
+            <span>Team / Deploy</span>
           </span>
         </div>
 
-        <span className="text-cyan-400/80">Click node for deep dive</span>
+        <span className="text-[#00F2FE]">Click node to inspect in Right Inspector</span>
       </div>
 
     </div>
