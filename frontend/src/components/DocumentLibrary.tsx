@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, FileText, Calendar, Database, Layers } from 'lucide-react';
+import { X, FileText, Calendar, Database, Layers, FolderOpen, Globe, Tag } from 'lucide-react';
 import { DocumentItem } from '@/lib/types';
 
 interface DocumentLibraryProps {
@@ -34,7 +34,7 @@ export default function DocumentLibrary({ isOpen, onClose, documents }: Document
         <div className="p-6 overflow-y-auto space-y-4">
           {documents.length === 0 ? (
             <p className="text-center py-8 text-xs font-mono text-stone-400">
-              NO DOCUMENTS INGESTED YET. CLICK "LOAD MERIDIAN DEMO" TO GET STARTED.
+              NO DOCUMENTS INGESTED YET. CLICK &quot;LOAD PHOENIX DEMO&quot; TO GET STARTED.
             </p>
           ) : (
             documents.map((doc) => (
@@ -49,14 +49,45 @@ export default function DocumentLibrary({ isOpen, onClose, documents }: Document
                       {doc.title}
                     </h3>
                   </div>
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700 font-semibold">
-                    {doc.source_type}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {doc.project && (
+                      <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-sky-50 border border-sky-200 text-sky-700 font-semibold flex items-center gap-1">
+                        <Tag className="w-2.5 h-2.5" />
+                        {doc.project}
+                      </span>
+                    )}
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700 font-semibold">
+                      {doc.source_type}
+                    </span>
+                  </div>
                 </div>
 
                 <p className="text-xs text-stone-600 font-sans line-clamp-2 mb-2">
                   {doc.content_preview}
                 </p>
+
+                {/* Source path/URL */}
+                {(doc.path || doc.url) && (
+                  <div className="flex items-center gap-3 mb-2 text-[11px] font-mono text-stone-500">
+                    {doc.path && (
+                      <span className="flex items-center gap-1">
+                        <FolderOpen className="w-3 h-3 text-stone-400" />
+                        <span className="truncate max-w-[200px]">{doc.path}</span>
+                      </span>
+                    )}
+                    {doc.url && (
+                      <a
+                        href={doc.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-sky-600 hover:text-sky-800 hover:underline"
+                      >
+                        <Globe className="w-3 h-3" />
+                        <span className="truncate max-w-[200px]">{doc.url}</span>
+                      </a>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex items-center space-x-4 text-[11px] font-mono text-stone-500 pt-2 border-t border-dashed border-[#E2DDD5]">
                   <span className="flex items-center space-x-1">

@@ -17,6 +17,7 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
   const [textContent, setTextContent] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [urlTitle, setUrlTitle] = useState('');
+  const [project, setProject] = useState('Phoenix');
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
 
@@ -28,7 +29,7 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     setIsLoading(true);
     setStatusMessage(null);
     try {
-      const res = await ingestFile(file);
+      const res = await ingestFile(file, project);
       setStatusMessage({ text: res.message });
       setFile(null);
       setTimeout(() => {
@@ -48,7 +49,7 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     setIsLoading(true);
     setStatusMessage(null);
     try {
-      const res = await ingestText(textTitle.trim(), textContent.trim());
+      const res = await ingestText(textTitle.trim(), textContent.trim(), 'text', project);
       setStatusMessage({ text: res.message });
       setTextTitle('');
       setTextContent('');
@@ -69,7 +70,7 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     setIsLoading(true);
     setStatusMessage(null);
     try {
-      const res = await ingestUrl(urlInput.trim(), urlTitle.trim() || undefined);
+      const res = await ingestUrl(urlInput.trim(), urlTitle.trim() || undefined, project);
       setStatusMessage({ text: res.message });
       setUrlInput('');
       setUrlTitle('');
@@ -138,13 +139,28 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
         {/* Body Content */}
         <div className="p-6">
           
+          {/* Project Selector */}
+          <div className="mb-4">
+            <label className="block text-[10px] font-mono uppercase text-stone-500 font-bold tracking-wider mb-1.5">
+              PROJECT
+            </label>
+            <select
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E2DDD5] rounded text-xs font-mono text-stone-900 focus:outline-none focus:border-amber-400"
+            >
+              <option value="Phoenix">Project Phoenix</option>
+              <option value="default">General</option>
+            </select>
+          </div>
+          
           {/* File Tab */}
           {tab === 'file' && (
             <form onSubmit={handleFileUpload} className="space-y-4">
               <div className="border-2 border-dashed border-[#E2DDD5] hover:border-amber-400 rounded-md p-8 text-center bg-[#FAF8F5] transition-colors cursor-pointer relative">
                 <input
                   type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv,.doc,.docx"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />

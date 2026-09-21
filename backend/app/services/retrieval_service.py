@@ -1,9 +1,11 @@
+import hashlib
 import json
 import logging
 import re
-from typing import Dict, Any, List, Set
+from datetime import datetime
+from typing import Dict, Any, List, Set, Optional
 from app.config import settings
-from app.db import db
+from app.db import db, compute_content_hash, parse_date_for_sorting
 from app.models import (
     ReconstructionResponse,
     GraphData,
@@ -14,6 +16,16 @@ from app.models import (
     ExtractedEvent
 )
 from app.services.embedding_service import generate_embedding
+from app.services.work_engine import (
+    is_likely_person,
+    detect_missing_context,
+    sort_timeline_chronologically,
+    calculate_deterministic_confidence,
+    build_graph,
+    build_timeline_events,
+    build_citations,
+    get_sources_used
+)
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +91,101 @@ def _clean_json_string(raw_text: str) -> str:
         text = re.sub(r"\s*```$", "", text)
     return text.strip()
 
+def _is_backend_only_query(query: str) -> bool:
+    """Determine if a query can be answered without Gemini (backend-only)."""
+    backend_only_patterns = [
+        r"(?i)^(show|list|find|get|display)\s+(all\s+)?(files?|documents?|sources?|notes?)",
+        r"(?i)^(show|list|find|get|display)\s+.*\b(from|in|about|related to|mentioning)\b",
+        r"(?i)^(which|what)\s+(files?|documents?|sources?)\s+",
+        r"(?i)^(open|show)\s+.*\evidence\b",
+        r"(?i)^(search|filter)\s+",
+    ]
+    return any(re.search(p, query) for p in backend_only_patterns)
+
+def _sort_timeline_chronologically(events: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Sort timeline events chronologically by date."""
+    dated_events = []
+    undated_events = []
+    for ev in events:
+        date_str = ev.get("date", "")
+        sort_key = parse_date_for_sorting(date_str)
+        if sort_key == "9999-99-99":
+            undated_events.append(ev)
+        else:
+            dated_events.append((sort_key, ev))
+    dated_events.sort(key=lambda x: x[0])
+    return [ev for _, ev in dated_events] + undated_events
+
+def _calculate_deterministic_confidence(
+    retrieved_chunks: List[Dict[str, Any]],
+    events: List[Dict[str, Any]],
+    query: str
+) -> tuple[str, str]:
+    """Calculate confidence based on deterministic signals."""
+    score = 0.5  # baseline
+    rationale_parts = []
+    
+    # Number of evidence chunks
+    chunk_count = len(retrieved_chunks)
+    if chunk_count >= 4:
+        score += 0.15
+        rationale_parts.append(f"{chunk_count} evidence chunks retrieved")
+    elif chunk_count >= 2:
+        score += 0.05
+        rationale_parts.append(f"{chunk_count} evidence chunks retrieved")
+    else:
+        score -= 0.1
+        rationale_parts.append(f"Only {chunk_count} evidence chunks retrieved")
+    
+    # Number of events
+    event_count = len(events)
+    if event_count >= 3:
+        score += 0.1
+        rationale_parts.append(f"{event_count} timeline events found")
+    elif event_count >= 1:
+        score += 0.05
+    
+    # Source diversity
+    doc_ids = set(c.get("document_id") for c in retrieved_chunks if c.get("document_id"))
+    if len(doc_ids) >= 3:
+        score += 0.1
+        rationale_parts.append(f"Evidence from {len(doc_ids)} distinct sources")
+    elif len(doc_ids) >= 2:
+        score += 0.05
+    
+    # Vector similarity quality
+    avg_sim = sum(c.get("similarity", 0) for c in retrieved_chunks) / max(chunk_count, 1)
+    if avg_sim > 0.7:
+        score += 0.1
+        rationale_parts.append("High similarity scores")
+    elif avg_sim > 0.5:
+        score += 0.05
+    
+    # Determine level
+    if score >= 0.75:
+        level = "high"
+    elif score >= 0.55:
+        level = "medium"
+    else:
+        level = "low"
+    
+    rationale = "; ".join(rationale_parts) if rationale_parts else "Limited evidence available"
+    return level, rationale
+
+def _build_source_traceable_citation(chunk: Dict[str, Any]) -> CitationItem:
+    """Build a citation with full source traceability."""
+    return CitationItem(
+        document_id=chunk.get("document_id"),
+        document_title=chunk.get("document_title", "Document"),
+        source_type=chunk.get("source_type", "text"),
+        quote=chunk.get("chunk_text", "")[:180] + "...",
+        relevance="Directly matched search criteria for historical context.",
+        path=chunk.get("path"),
+        url=chunk.get("url"),
+        chunk_id=chunk.get("id"),
+        score=round(chunk.get("fusion_score", chunk.get("similarity", 0)), 3)
+    )
+
 def _heuristic_reconstruction(
     query: str,
     retrieved_chunks: List[Dict[str, Any]],
@@ -87,107 +194,76 @@ def _heuristic_reconstruction(
     relationships: List[Dict[str, Any]]
 ) -> ReconstructionResponse:
     """Fallback rule-based reconstructor for offline testing."""
-    citations = []
-    for c in retrieved_chunks[:4]:
-        citations.append(CitationItem(
-            document_id=c.get("document_id"),
-            document_title=c.get("document_title", "Document"),
-            source_type=c.get("source_type", "text"),
-            quote=c.get("chunk_text", "")[:180] + "...",
-            relevance="Directly matched search criteria for historical context."
-        ))
+    # Use work_engine functions for deterministic processing
+    citations = build_citations(retrieved_chunks)
+    timeline_events = build_timeline_events(events)
+    graph = build_graph(entities, relationships)
+    missing = detect_missing_context(query, retrieved_chunks, events, entities, relationships)
+    sources_used = get_sources_used(retrieved_chunks)
 
-    # Format timeline
-    timeline_events = []
-    for ev in events[:6]:
-        timeline_events.append(ExtractedEvent(
-            date=ev["date"],
-            title=ev["title"],
-            description=ev["description"],
-            decision=ev.get("decision"),
-            actors=ev.get("actors", []),
-            evidence_quote=ev.get("evidence_quote"),
-            document_title=ev.get("document_title")
-        ))
-
-    # Detect potential missing context
-    missing = []
-    if len(retrieved_chunks) < 3:
-        missing.append(MissingContextItem(
-            category="broken_chain",
-            description="Limited source documentation retrieved for this specific query.",
-            impact="Historical trail has incomplete coverage; some decisions may have happened in unrecorded channels (e.g. private chats or verbal 1:1s).",
-            suggested_investigation="Ingest related Slack/Discord exports or meeting minutes covering the same timeframe."
-        ))
-    
-    missing.append(MissingContextItem(
-        category="unrecorded_reason",
-        description="Formal alternatives analysis and post-migration review records were not detected.",
-        impact="Team cannot verify whether rejected alternatives were evaluated on benchmarks or personal preference.",
-        suggested_investigation="Check Jira/GitHub architecture issues or ask the original author."
-    ))
-
-    # Build Graph
-    graph_nodes = []
-    graph_links = []
-    seen_nodes: Set[str] = set()
-
-    for e in entities[:15]:
-        if e["name"] not in seen_nodes:
-            seen_nodes.add(e["name"])
-            graph_nodes.append(GraphNode(
-                id=e["name"],
-                name=e["name"],
-                type=e["type"],
-                description=e.get("description", e.get("role")),
-                val=3.0 if e["type"] in ["decision", "system"] else 2.0
-            ))
-
-    for r in relationships[:20]:
-        if r["source"] in seen_nodes and r["target"] in seen_nodes:
-            graph_links.append(GraphLink(
-                source=r["source"],
-                target=r["target"],
-                relation=r["relation"],
-                evidence=r.get("context")
-            ))
-
-    direct_ans = (
-        f"Based on {len(retrieved_chunks)} historical records found, key decisions regarding '{query}' "
-        f"were driven by documented system constraints and verified milestones across {len(events)} events."
-    )
+    # Build query-aware answer
+    query_lower = query.lower()
+    if any(w in query_lower for w in ["who", "approved", "decided"]):
+        person_entities = [e for e in entities if e.get("type") == "person"]
+        if person_entities:
+            names = [e["name"] for e in person_entities[:3]]
+            direct_ans = f"The documents reference {', '.join(names)} as key stakeholders involved in this decision."
+        else:
+            direct_ans = "The available documents do not clearly identify who specifically made or approved this decision."
+    elif any(w in query_lower for w in ["why", "reason", "rationale"]):
+        direct_ans = f"Based on {len(retrieved_chunks)} evidence sources, the decision appears driven by documented architectural constraints and team requirements."
+    elif any(w in query_lower for w in ["what happened", "timeline", "sequence"]):
+        direct_ans = f"The evidence reveals {len(events)} recorded events across {len(set(c.get('document_id') for c in retrieved_chunks))} sources."
+    else:
+        direct_ans = f"Analysis of {len(retrieved_chunks)} historical records provides context regarding '{query}'."
 
     reasoning = (
-        f"Forensic analysis of retrieved documents indicates active collaboration among stakeholders. "
-        f"The primary decision path centered on resolving architectural bottlenecks and establishing clearer contracts. "
-        f"However, several rationale steps were not fully recorded in written archives."
+        f"Forensic analysis of retrieved documents indicates collaboration among stakeholders. "
+        f"The evidence spans {len(set(c.get('document_id') for c in retrieved_chunks))} distinct sources "
+        f"with {len(events)} recorded events and {len(relationships)} documented relationships."
+    )
+
+    # Deterministic confidence
+    confidence_score, confidence_rationale = calculate_deterministic_confidence(
+        retrieved_chunks, events, entities, relationships, query
     )
 
     return ReconstructionResponse(
         query=query,
         direct_answer=direct_ans,
         reasoning_summary=reasoning,
-        confidence_score="medium" if len(retrieved_chunks) >= 2 else "low",
-        confidence_rationale=f"Synthesized from {len(retrieved_chunks)} evidentiary document chunks and {len(timeline_events)} chronological events.",
+        confidence_score=confidence_score,
+        confidence_rationale=confidence_rationale,
         timeline=timeline_events,
-        graph=GraphData(nodes=graph_nodes, links=graph_links),
+        graph=graph,
         citations=citations,
-        missing_context=missing
+        missing_context=missing,
+        sources_used=sources_used,
+        backend_only=True
     )
 
-async def reconstruct_context(query: str, top_k: int = 6) -> ReconstructionResponse:
+async def reconstruct_context(query: str, top_k: int = 6, project: str = None, source_type: str = None) -> ReconstructionResponse:
     """
-    Executes hybrid retrieval (vector similarity + keyword search) and prompts Gemini
-    to reconstruct the missing context narrative, timeline, citations, and missing context flags.
+    Executes hybrid retrieval (vector similarity + keyword search) and routes to
+    backend-only or Gemini-assisted reconstruction based on query complexity.
     """
+    # Check cache first
+    cache_key = hashlib.sha256(f"{query}:{top_k}:{project}:{source_type}".encode()).hexdigest()[:16]
+    cached = await db.get_cache(cache_key)
+    if cached:
+        logger.info(f"Cache hit for query: {query[:50]}...")
+        result = cached["result"]
+        result["confidence_rationale"] += f" (cached, {cached['hit_count']} hits)"
+        return ReconstructionResponse(**result)
+
     # 1. Embed query
     query_emb = await generate_embedding(query)
 
-    # 2. Vector search
-    vector_results = await db.search_chunks_by_vector(query_emb, match_count=top_k)
+    # 2. Vector search with metadata filtering
+    vector_results = await db.search_chunks_by_vector(query_emb, match_count=top_k, project=project, source_type=source_type)
 
-    # 3. Keyword search
-    keyword_results = await db.search_chunks_by_keywords(query, match_count=top_k)
+    # 3. Keyword search with metadata filtering
+    keyword_results = await db.search_chunks_by_keywords(query, match_count=top_k, project=project, source_type=source_type)
 
     # 4. Hybrid Reciprocal Fusion / deduplication
     chunk_map = {}
@@ -215,12 +291,16 @@ async def reconstruct_context(query: str, top_k: int = 6) -> ReconstructionRespo
     entities, relationships = await db.get_all_entities_and_relationships(doc_ids if doc_ids else None)
     events = await db.get_events(doc_ids if doc_ids else None)
 
-    # If no Gemini API key configured, use heuristic
+    # Check if this is a backend-only query
     api_key = settings.GEMINI_API_KEY.strip() if settings.GEMINI_API_KEY else ""
     is_real_key = bool(api_key and not api_key.startswith("your_"))
+    use_backend_only = not is_real_key or not top_chunks or _is_backend_only_query(query)
 
-    if not is_real_key or not top_chunks:
-        return _heuristic_reconstruction(query, top_chunks, events, entities, relationships)
+    if use_backend_only:
+        result = _heuristic_reconstruction(query, top_chunks, events, entities, relationships)
+        # Cache the result
+        await db.set_cache(cache_key, result.model_dump())
+        return result
 
     # Format evidence chunks for Gemini
     evidence_text = "\n\n".join([
@@ -264,43 +344,32 @@ async def reconstruct_context(query: str, top_k: int = 6) -> ReconstructionRespo
         data = json.loads(cleaned)
 
 
-        # Build Graph structures
-        graph_nodes = []
-        graph_links = []
-        seen_nodes: Set[str] = set()
+        # Build Graph structures using work_engine
+        graph = build_graph(entities, relationships, max_nodes=25, max_links=30)
 
-        for e in entities[:25]:
-            if e["name"] not in seen_nodes:
-                seen_nodes.add(e["name"])
-                graph_nodes.append(GraphNode(
-                    id=e["name"],
-                    name=e["name"],
-                    type=e["type"],
-                    description=e.get("description", e.get("role")),
-                    val=3.0 if e["type"] in ["decision", "system"] else 2.0
-                ))
+        # Collect source document IDs
+        sources_used = get_sources_used(top_chunks)
 
-        for r in relationships[:30]:
-            if r["source"] in seen_nodes and r["target"] in seen_nodes:
-                graph_links.append(GraphLink(
-                    source=r["source"],
-                    target=r["target"],
-                    relation=r["relation"],
-                    evidence=r.get("context")
-                ))
-
-        return ReconstructionResponse(
+        result = ReconstructionResponse(
             query=query,
             direct_answer=data.get("direct_answer", ""),
             reasoning_summary=data.get("reasoning_summary", ""),
             confidence_score=data.get("confidence_score", "medium"),
             confidence_rationale=data.get("confidence_rationale", ""),
             timeline=[ExtractedEvent(**ev) for ev in data.get("timeline", [])],
-            graph=GraphData(nodes=graph_nodes, links=graph_links),
+            graph=graph,
             citations=[CitationItem(**ci) for ci in data.get("citations", [])],
-            missing_context=[MissingContextItem(**mc) for mc in data.get("missing_context", [])]
+            missing_context=[MissingContextItem(**mc) for mc in data.get("missing_context", [])],
+            sources_used=sources_used,
+            backend_only=False
         )
+
+        # Cache the result
+        await db.set_cache(cache_key, result.model_dump())
+        return result
 
     except Exception as e:
         logger.error(f"Gemini context reconstruction failed: {e}. Falling back to heuristic reconstruction.")
-        return _heuristic_reconstruction(query, top_chunks, events, entities, relationships)
+        result = _heuristic_reconstruction(query, top_chunks, events, entities, relationships)
+        await db.set_cache(cache_key, result.model_dump())
+        return result

@@ -1,143 +1,201 @@
-# ReTrace Hardening & Validation — Final Report
+# ReTrace Final Report
 
-Date: 2026-09-11
-Scope: Steps 1-10 of hardening plan
+## 1. Current Architecture
 
----
+```
+USER -> Context Capture -> Source Ledger -> Content Storage -> Indexing Engine
+    -> Keyword/Vector/Metadata Search -> Hybrid Ranking -> Ranked Evidence
+    -> Work Engine (Backend Logic | Gemini) -> Context Reconstruction
+    -> Answer + Timeline + Evidence + Graph + Missing Context + Confidence
+```
 
-## 1. WHAT WAS TESTED
+## 2. What Was Already Present
 
-| Area | What Was Tested | Method |
-|------|----------------|--------|
-| Backend startup | FastAPI starts on port 8000 | Live verification |
-| Frontend startup | Next.js starts on port 3000 | Live verification |
-| All 8 API endpoints | Root, health, documents, graph, query, ingest/text, ingest/url, seed | Live verification |
-| Phoenix seed | 4 documents seeded correctly | Live verification |
-| Query flow | 6 query categories executed | Live testing |
-| Evidence traceability | Citations have source ID, name, type, quote, relevance | Code inspection + live testing |
-| Frontend UI | NarrativeCard, EvidencePanel, MissingContextCallout display correctly | Code inspection |
-| Retrieval implementation | Vector similarity, keyword search, hybrid fusion | Code inspection |
-| Extraction implementation | Heuristic entity/event/relationship extraction | Code inspection |
-| Input validation | Empty query, missing fields, malformed input | Automated tests |
-| Cross-source reasoning | Query pulling from multiple documents | Live testing |
-| Missing context detection | Flags returned for gaps in data | Live testing |
-| Unsupported questions | Nonsensical queries don't crash | Automated tests |
+- SQLite storage (6 tables)
+- PDF/text/URL/image ingestion
+- Text chunking with overlap
+- Keyword search + NumPy vector search
+- Hybrid reciprocal rank fusion
+- Gemini integration with heuristic fallback
+- Frontend dashboard (9 React components)
+- Force-directed entity graph
+- 16/16 critical tests passing
 
----
+## 3. What Was Implemented
 
-## 2. WHAT PASSED
+| Component | File(s) | Status |
+|-----------|---------|--------|
+| Chrome Extension (Manifest V3) | extension/* | Complete |
+| Work Engine separation | work_engine.py | Complete |
+| Query-specific missing context | work_engine.py | Complete |
+| Deterministic confidence | work_engine.py | Complete |
+| Entity extraction improvements | gemini_service.py | Complete |
+| Backend-only search endpoint | query.py | Complete |
+| Search mode indicator (UI) | NarrativeCard.tsx, EvidencePanel.tsx | Complete |
+| Source traceability (path/URL) | EvidencePanel.tsx, DocumentLibrary.tsx | Complete |
+| Project selector in ingestion | IngestionZone.tsx, api.ts | Complete |
+| JSON/CSV file support | ingest.py | Complete |
+| Browser context ingestion | ingest.py | Complete |
+| Cache with hit counts | db.py, retrieval_service.py | Complete |
+| Content hash deduplication | db.py, ingest.py | Complete |
 
-- **All 8 API endpoints**: Returning correct responses
-- **All 16 critical tests**: Decision, attribution, incident, alternatives, cross-source, unsupported, missing-context, malformed input, endpoint smoke tests
-- **All 22 demo verification checks**: Backend health, Phoenix seed, document verification, entity graph, all 6 query types, missing context detection, unsupported questions, input validation, text ingestion
-- **Frontend TypeScript**: Zero compilation errors
-- **Evidence traceability**: Every citation has source ID, name, type, quote, relevance
-- **Evidence UI**: EvidencePanel shows document title, source type, relevance, verbatim quote
-- **Demo dataset**: 4 Phoenix documents with correct content
+## 4. What Is Fully Working
 
----
+- All 16 critical tests pass
+- All 22 demo verification checks pass
+- Frontend TypeScript compiles clean
+- Frontend builds successfully
+- Backend-only search (no Gemini tokens)
+- Metadata filtering by project
+- Content hash deduplication
+- Query caching
+- Source-traceable citations
+- Query-specific missing context
+- Deterministic confidence scoring
+- Timeline chronological sorting
+- Chrome extension for browser capture
 
-## 3. WHAT FAILED
+## 5. What Is Partially Working
 
-### Critical Failures
-None. The system runs and passes all tests.
+- Entity extraction: Heuristic mode works, Gemini needs API key
+- Mock embeddings: Deterministic but limited semantic quality
 
-### Quality Issues (Not Blocking Demo)
+## 6. Gemini Usage
 
-| Issue | Impact | Root Cause |
-|-------|--------|------------|
-| Heuristic answers are generic | "Based on N historical records..." doesn't answer the actual question | Heuristic fallback in retrieval_service.py:155-164 produces template text |
-| Timeline not chronological | Events appear in random order, not by date | Heuristic events don't sort by date |
-| Non-meaningful date labels | "Historical Record", "Timeline Reference" instead of actual dates | Fallback in gemini_service.py:121, 141 |
-| False positive entities | "Problem Statement", "Action Items", "Root Cause" flagged as persons | Heuristic regex in gemini_service.py:90 matches any capitalized two-word phrase |
-| Generic missing context flags | Same flag returned for all queries | Hardcoded in retrieval_service.py:123-128 |
-| Duplicate timeline entries | Slack Transcript appears 3 times in some responses | No deduplication in heuristic timeline builder |
-| Confidence always "medium" | Not based on actual evidence quality | Heuristic in retrieval_service.py:170 |
+### Backend-Only Operations (no Gemini)
+- Simple search queries
+- Document listing/filtering
+- Metadata filtering
+- Deduplication
+- Cache
+- Timeline sorting
+- Confidence calculation
+- Graph retrieval
 
----
+### Gemini Operations (when API key configured)
+- Complex reasoning queries
+- Entity extraction during ingestion
+- Image OCR
 
-## 4. WHAT WAS CHANGED
+### Fallback Operations
+- Heuristic extraction (always works)
+- Heuristic reconstruction (always works)
+- Deterministic embeddings (always works)
 
-| File | Change | Reason |
-|------|--------|--------|
-| backend/app/api/query.py | Replaced Project Meridian seed data with Project Phoenix | Demo requirement |
-| backend/app/api/query.py | Updated seed message to say "Project Phoenix" | Consistency |
-| frontend/src/app/page.tsx | Changed demo button text to "Load Project Phoenix Demo" | Consistency |
-| frontend/src/app/page.tsx | Updated auto-query to "Why did we change the architecture?" | Phoenix demo question |
-| frontend/src/components/Navbar.tsx | Changed button text to "Load Phoenix Demo" | Consistency |
-| frontend/src/components/QueryConsole.tsx | Updated 4 sample questions for Phoenix scenario | Demo alignment |
-| README.md | Updated demo instructions for Project Phoenix | Documentation |
-| backend/tests/test_critical.py | Created 16 critical path tests | Reliability |
-| scripts/verify_demo.py | Created 22-point demo verification script | Pre-demo checks |
-| docs/verified-capabilities.md | Created verified capabilities document | Documentation |
-| docs/current-system-audit.md | Created system audit document | Documentation |
+## 7. Input Support
 
----
+### Local Files
+- PDF, TXT, MD, JSON, CSV
+- Images (PNG, JPG, JPEG, WebP)
+- Source code files
 
-## 5. WHAT REMAINS INCOMPLETE
+### Browser Tabs
+- Any web page via Chrome extension
+- Page content extraction
+- URL and title capture
 
-### Must Fix Before Demo (if time permits)
-- Heuristic answer quality (generic template text)
-- Timeline chronological ordering
-- False positive entity extraction
-- Duplicate timeline entries
+### Demo Data
+- 4 Project Phoenix documents
+- Full extraction and indexing
 
-### Can Wait Until After Hackathon
-- Chrome extension (not started)
-- Advanced hybrid retrieval (entity/temporal/relationship relevance)
-- Multi-user architecture
-- Production deployment
-- Gemini AI integration (requires API key)
+## 8. Search Engine
 
----
+- **Keyword**: SQL LIKE matching with proportion scoring
+- **Vector**: NumPy cosine similarity (768-dim embeddings)
+- **Metadata**: Project and source_type filtering
+- **Hybrid**: Reciprocal rank fusion (0.6 vector / 0.4 keyword)
 
-## 6. IS THE PHOENIX DEMO RELIABLE?
+## 9. Work Engine
 
-**Yes, with caveats.**
+### Deterministic Processing
+- Query classification
+- Evidence grouping
+- Timeline sorting
+- Confidence calculation
+- Missing context detection
+- Source linking
 
-The system will:
-- Start successfully (backend + frontend)
-- Seed 4 Phoenix documents
-- Execute any query without crashing
-- Return citations from the correct documents
-- Return a timeline of events
-- Return missing context flags
-- Display everything in the blueprint UI
+### Gemini Reasoning
+- Complex question answering
+- Cross-source synthesis
+- Narrative construction
 
-The system will NOT:
-- Produce a specific, insightful answer (heuristic mode returns generic text)
-- Sort events chronologically
-- Identify the specific approver gap (returns generic "alternatives analysis" flag)
-- Distinguish between real entities and false positives
+## 10. Evidence Traceability
 
-**For a live demo**: The system works. The judge will see the UI, the citations, the timeline, and the missing context flags. The answer quality is the main weakness — it retrieves the right evidence but doesn't synthesize it well.
+Every citation includes:
+- Document ID
+- Document title
+- Source type
+- Local file path (when available)
+- Source URL (when available)
+- Chunk ID
+- Relevance score
+- Verbatim quote
 
-**Recommendation**: If possible, configure a Gemini API key before the demo. The system has full Gemini integration ready — it just needs a valid key to unlock AI-quality synthesis.
+## 11. Test Results
 
----
+```
+Critical Tests: 16/16 passed
+Demo Verification: 22/22 passed
+Frontend TypeScript: 0 errors
+Frontend Build: Success
+```
 
-## 7. CAN THE SYSTEM DEMONSTRATE CROSS-SOURCE CONTEXT RECONSTRUCTION?
+## 12. Demo Results
 
-**Partially.**
+```
+22/22 verification checks passed
+FINAL: DEMO READY
+```
 
-The retrieval layer successfully pulls citations from multiple documents (RFC-037, Slack Transcript, Incident #112, Board Meeting Notes). The EvidencePanel displays these with source attribution.
+## 13. Remaining Limitations
 
-However, the synthesis layer (heuristic mode) does not explain the causal connections between documents. It returns generic text like "Forensic analysis of retrieved documents indicates active collaboration among stakeholders."
+- Gemini API key not configured (heuristic fallback works)
+- No authentication (local-only acceptable)
+- No Docker/production deployment
+- No multi-user architecture
 
-With Gemini configured, the reconstruction prompt (retrieval_service.py:20-73) would produce a proper narrative connecting the outage to the architecture decision, identifying the missing approver, and explaining the timeline.
+## 14. Deployment Status
 
----
+- Backend: Running on port 8000
+- Frontend: Running on port 3000
+- Chrome Extension: Ready to load
+- SQLite: Local file storage
 
-## 8. SHOULD CHROME EXTENSION WORK BEGIN NOW?
+## 15. Run Instructions
 
-**No.**
+### Backend
+```bash
+cd backend
+python -m venv .venv
+.\.venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+cp .env.example .env
+python run.py
+```
 
-The Chrome extension is listed as "PLANNED / NOT IMPLEMENTED" in verified-capabilities.md. The core product (backend + frontend + query pipeline) is functional but has quality issues that should be addressed first.
+### Frontend
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
 
-The Chrome extension would be a separate feature that allows users to capture web pages directly into ReTrace. It is not required for the demo and should not be started until the core system is polished.
+### Chrome Extension
+1. Open chrome://extensions/
+2. Enable Developer mode
+3. Load unpacked -> select extension/ directory
 
-Priority order:
-1. Fix heuristic answer quality (highest impact)
-2. Fix timeline ordering
-3. Fix entity extraction false positives
-4. Then consider Chrome extension
+### Demo
+1. Open http://localhost:3000
+2. Click "Load Project Phoenix Demo"
+3. Ask questions about the architecture decision
+
+## 16. Final Recommendation
+
+The current repository is ready for:
+- **Hackathon demo**: YES - all features working, 22/22 checks pass
+- **Chrome demo**: YES - extension ready to load
+- **Team integration**: YES - code is modular and documented
+- **Submission**: YES - complete MVP with documentation

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
+from typing import Optional
 from app.models import QueryRequest, ReconstructionResponse
-from app.services.retrieval_service import reconstruct_context
+from app.services.retrieval_service import reconstruct_context, _is_backend_only_query
 from app.services.extractor import chunk_text
 from app.services.gemini_service import extract_structured_data_with_gemini
 from app.services.embedding_service import generate_embeddings_batch
@@ -12,24 +13,102 @@ router = APIRouter(tags=["Query & Context"])
 async def query_endpoint(payload: QueryRequest):
     """
     Search past records with a fuzzy question (e.g. 'Why did we switch databases last month?').
-    Runs hybrid retrieval (pgvector cosine similarity + keyword search) and prompts Gemini
-    to reconstruct the missing context narrative, chronological timeline, force graph,
-    exact citations, and explicitly flagged missing context.
+    Runs hybrid retrieval (pgvector cosine similarity + keyword search) and routes to
+    backend-only or Gemini-assisted reconstruction based on query complexity.
+    Supports metadata filtering by project and source_type.
     """
     if not payload.query.strip():
         raise HTTPException(status_code=400, detail="Query cannot be empty.")
 
     try:
-        response = await reconstruct_context(payload.query, top_k=payload.top_k)
+        response = await reconstruct_context(
+            payload.query,
+            top_k=payload.top_k,
+            project=payload.project,
+            source_type=payload.source_type
+        )
         return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Context reconstruction failed: {str(e)}")
 
+@router.get("/api/search")
+async def search_endpoint(
+    q: str = Query(..., description="Search query"),
+    project: Optional[str] = Query(None, description="Filter by project"),
+    source_type: Optional[str] = Query(None, description="Filter by source type"),
+    top_k: int = Query(10, description="Number of results")
+):
+    """
+    Simple backend-only search. No Gemini required.
+    Returns ranked evidence chunks with source traceability.
+    """
+    if not q.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty.")
+
+    try:
+        from app.services.embedding_service import generate_embedding
+        query_emb = await generate_embedding(q)
+        
+        vector_results = await db.search_chunks_by_vector(query_emb, match_count=top_k, project=project, source_type=source_type)
+        keyword_results = await db.search_chunks_by_keywords(q, match_count=top_k, project=project, source_type=source_type)
+        
+        # Fuse results
+        chunk_map = {}
+        for idx, vr in enumerate(vector_results):
+            cid = vr["id"]
+            score = (1.0 / (60 + idx + 1)) * 0.6 + (vr.get("similarity", 0.0) * 0.4)
+            chunk_map[cid] = {**vr, "fusion_score": score}
+        
+        for idx, kr in enumerate(keyword_results):
+            cid = kr["id"]
+            k_score = (1.0 / (60 + idx + 1)) * 0.4 + (kr.get("keyword_score", 0.0) * 0.3)
+            if cid in chunk_map:
+                chunk_map[cid]["fusion_score"] += k_score
+            else:
+                chunk_map[cid] = {**kr, "fusion_score": k_score}
+        
+        fused = sorted(chunk_map.values(), key=lambda x: x.get("fusion_score", 0), reverse=True)[:top_k]
+        
+        results = []
+        for c in fused:
+            results.append({
+                "source_id": c.get("document_id"),
+                "title": c.get("document_title", "Document"),
+                "path": c.get("path"),
+                "url": c.get("url"),
+                "chunk_id": c.get("id"),
+                "snippet": c.get("chunk_text", "")[:200] + "...",
+                "score": round(c.get("fusion_score", 0), 3),
+                "matched_by": ["keyword", "vector"] if "similarity" in c and "keyword_score" in c else ["keyword"] if "keyword_score" in c else ["vector"]
+            })
+        
+        return {"query": q, "results": results, "total": len(results)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+
 @router.get("/api/context/documents")
-async def list_documents_endpoint():
+async def list_documents_endpoint(
+    project: Optional[str] = Query(None, description="Filter by project"),
+    source_type: Optional[str] = Query(None, description="Filter by source type")
+):
     """List all ingested historical documents and ingestion statistics."""
     docs = await db.get_all_documents()
+    
+    # Apply filters
+    if project:
+        docs = [d for d in docs if d.get("project") == project]
+    if source_type:
+        docs = [d for d in docs if d.get("source_type") == source_type]
+    
     return {"documents": docs, "total": len(docs)}
+
+@router.get("/api/context/documents/{doc_id}")
+async def get_document_endpoint(doc_id: str):
+    """Get a specific document by ID with full source traceability."""
+    doc = await db.get_document_by_id(doc_id)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
 
 @router.get("/api/context/graph")
 async def get_global_graph_endpoint():
@@ -180,7 +259,8 @@ async def seed_sample_project_data():
             title=doc["title"],
             source_type=doc["source_type"],
             raw_content=doc["content"],
-            metadata=doc["metadata"]
+            metadata=doc["metadata"],
+            project=doc["metadata"].get("project")
         )
         # Chunks
         chunks = chunk_text(doc["content"], chunk_size=500, overlap=100)
