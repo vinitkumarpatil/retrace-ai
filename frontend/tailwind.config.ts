@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,42 +10,28 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        blueprint: {
-          bg: "#FAF8F5",
-          panel: "#FFFFFF",
-          subtle: "#F4EFEA",
-          border: "#E2DDD5",
-          ink: "#1C2430",
-          muted: "#6B7280",
-          grid: "rgba(100, 116, 139, 0.08)",
-          ochre: {
-            DEFAULT: "#D97706",
-            light: "#FEF3C7",
-            dark: "#B45309",
-          },
-          sage: {
-            DEFAULT: "#059669",
-            light: "#D1FAE5",
-            dark: "#047857",
-          },
-          rust: {
-            DEFAULT: "#C2410C",
-            light: "#FEE2E2",
-            dark: "#991B1B",
-          },
-          navy: {
-            DEFAULT: "#1E293B",
-            light: "#334155",
-            dark: "#0F172A",
-          }
+        brand: {
+          50: '#EEF2FF',
+          100: '#E0E7FF',
+          200: '#C7D2FE',
+          300: '#A5B4FC',
+          400: '#818CF8',
+          500: '#6366F1',
+          600: '#4F46E5',
+          700: '#4338CA',
+          800: '#3730A3',
+          900: '#312E81',
+          950: '#1E1B4B',
         },
       },
       fontFamily: {
-        mono: ["var(--font-mono)", "JetBrains Mono", "Courier New", "monospace"],
-        sans: ["var(--font-sans)", "Inter", "-apple-system", "sans-serif"],
+        sans: ["var(--font-sans)", "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "ui-monospace", "SFMono-Regular", "Menlo", "Monaco", "Consolas", "monospace"],
       },
-      backgroundImage: {
-        "blueprint-grid": "radial-gradient(circle, #D1D5DB 1px, transparent 1px)",
+      boxShadow: {
+        'subtle': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+        'elevated': '0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05)',
+        'floating': '0 10px 25px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.08)',
       },
     },
   },

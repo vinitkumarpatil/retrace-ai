@@ -77,3 +77,33 @@ export interface IngestResponse {
   extracted_events_count: number;
   message: string;
 }
+
+export interface SystemHealth {
+  status: string;
+  version: string;
+  services: {
+    gemini: {
+      configured: boolean;
+      model: string;
+      embedding_model: string;
+    };
+    database: {
+      mode: string;
+      pgvector_ready: boolean;
+    };
+  };
+}
+
+export interface QueryHistoryItem {
+  id: string;
+  query: string;
+  timestamp: string;
+  confidenceScore?: 'high' | 'medium' | 'low';
+}
+
+export interface SelectedEntity {
+  id: string;
+  name: string;
+  type: string;
+}
+

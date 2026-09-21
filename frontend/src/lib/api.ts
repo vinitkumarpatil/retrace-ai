@@ -1,8 +1,8 @@
-import { ReconstructionResult, DocumentItem, IngestResponse } from './types';
+import { ReconstructionResult, DocumentItem, IngestResponse, SystemHealth } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-export async function checkHealth() {
+export async function checkHealth(): Promise<SystemHealth> {
   const res = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);
   return res.json();

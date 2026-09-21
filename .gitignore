@@ -23,6 +23,7 @@ frontend/.env
 out/
 build/
 dist/
+*.tsbuildinfo
 
 # SQLite & local data
 *.sqlite

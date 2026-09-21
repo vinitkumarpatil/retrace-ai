@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ReTrace — AI Lost Context Recovery Engine",
-  description: "Reconstruct missing architectural and product decisions across documents, dates, and people.",
+  title: "ReTrace — Architectural Context Recovery Engine",
+  description: "Reconstruct lost decisions, architectural pivots, and organizational context across documents, codebases, and team history.",
 };
 
 export default function RootLayout({
@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="blueprint-grid min-h-screen text-slate-800 antialiased selection:bg-amber-100 selection:text-amber-900">
+      <body className="subtle-grid min-h-screen antialiased selection:bg-indigo-100 selection:text-indigo-900 dark:selection:bg-indigo-950 dark:selection:text-indigo-200">
         {children}
       </body>
     </html>
