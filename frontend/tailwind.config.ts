@@ -9,42 +9,62 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        blueprint: {
-          bg: "#FAF8F5",
-          panel: "#FFFFFF",
-          subtle: "#F4EFEA",
-          border: "#E2DDD5",
-          ink: "#1C2430",
-          muted: "#6B7280",
-          grid: "rgba(100, 116, 139, 0.08)",
-          ochre: {
-            DEFAULT: "#D97706",
-            light: "#FEF3C7",
-            dark: "#B45309",
-          },
-          sage: {
-            DEFAULT: "#059669",
-            light: "#D1FAE5",
-            dark: "#047857",
-          },
-          rust: {
-            DEFAULT: "#C2410C",
-            light: "#FEE2E2",
-            dark: "#991B1B",
-          },
-          navy: {
-            DEFAULT: "#1E293B",
-            light: "#334155",
-            dark: "#0F172A",
-          }
+        // Exact User-Specified Palette
+        app: {
+          bg: "#05070D",
+          secondary: "#0B101A",
+          surface: "#101722",
+          elevated: "#151D29",
+          border: "#243044",
+          borderLight: "#334155",
+          text: "#F8FAFC",
+          muted: "#94A3B8",
+          dim: "#64748B",
+        },
+        accent: {
+          cyan: "#00F2FE",
+          cyanMuted: "#0284C7",
+          violet: "#8B5CF6",
+          violetMuted: "#6D28D9",
+          emerald: "#10B981",
+          amber: "#F59E0B",
+          red: "#EF4444",
+        },
+        // Semantic aliases
+        cosmic: {
+          bg: "#05070D",
+          panel: "#0B101A",
+          card: "#101722",
+          elevated: "#151D29",
+          border: "#243044",
+          borderLight: "#334155",
+        },
+        cyber: {
+          cyan: "#00F2FE",
+          violet: "#8B5CF6",
+          emerald: "#10B981",
+          amber: "#F59E0B",
+          rose: "#EF4444",
         },
       },
       fontFamily: {
         mono: ["var(--font-mono)", "JetBrains Mono", "Courier New", "monospace"],
-        sans: ["var(--font-sans)", "Inter", "-apple-system", "sans-serif"],
+        sans: ["var(--font-sans)", "Inter", "system-ui", "sans-serif"],
       },
-      backgroundImage: {
-        "blueprint-grid": "radial-gradient(circle, #D1D5DB 1px, transparent 1px)",
+      animation: {
+        "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "sonar": "sonar 2s cubic-bezier(0, 0.2, 0.8, 1) infinite",
+        "fade-in": "fadeIn 0.2s ease-out forwards",
+      },
+      keyframes: {
+        sonar: {
+          "0%": { transform: "scale(0.9)", opacity: "0.8" },
+          "100%": { transform: "scale(2.2)", opacity: "0" },
+        },
+        fadeIn: {
+          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
       },
     },
   },

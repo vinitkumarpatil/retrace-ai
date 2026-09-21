@@ -1,147 +1,190 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Calendar, Users, Quote, CheckCircle2, ChevronDown, ChevronUp, Clock } from 'lucide-react';
+import {
+  Calendar,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Quote,
+  Check,
+  Copy,
+  ArrowDown,
+  CheckCircle2,
+  Users,
+} from 'lucide-react';
 import { TimelineEvent } from '@/lib/types';
 
 interface TimelineViewProps {
   timeline: TimelineEvent[];
+  onSelectEvent?: (event: TimelineEvent) => void;
 }
 
-export default function TimelineView({ timeline }: TimelineViewProps) {
+export default function TimelineView({ timeline, onSelectEvent }: TimelineViewProps) {
   const [expandedIndices, setExpandedIndices] = useState<Record<number, boolean>>({});
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
-  const toggleExpand = (idx: number) => {
-    setExpandedIndices(prev => ({
+  const toggleExpand = (idx: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedIndices((prev) => ({
       ...prev,
-      [idx]: !prev[idx]
+      [idx]: !prev[idx],
     }));
   };
 
+  const handleSelect = (event: TimelineEvent, idx: number) => {
+    setSelectedIdx(idx);
+    if (onSelectEvent) {
+      onSelectEvent(event);
+    }
+  };
+
+  const filtered = (timeline || []).filter((item) => {
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      item.title.toLowerCase().includes(q) ||
+      item.description.toLowerCase().includes(q) ||
+      item.date.toLowerCase().includes(q)
+    );
+  });
+
   if (!timeline || timeline.length === 0) {
     return (
-      <div className="p-8 text-center border border-dashed border-[#E2DDD5] rounded bg-white font-mono text-xs text-stone-400">
-        NO CHRONOLOGICAL MILESTONES EXTRACTED FOR THIS QUERY
+      <div className="p-8 text-center rounded-xl bg-[#101722] border border-[#243044] font-mono text-xs text-[#94A3B8]">
+        NO CHRONOLOGICAL DECISION MILESTONES EXTRACTED FOR THIS QUERY
       </div>
     );
   }
 
   return (
-    <div className="drafting-card rounded-md border border-[#E2DDD5] bg-white p-6 relative corner-ticks shadow-xs">
+    <div className="rounded-xl p-6 bg-[#101722] border border-[#243044] shadow-xl space-y-5">
       
-      {/* Blueprint Header */}
-      <div className="flex items-center justify-between pb-4 mb-6 border-b border-[#E2DDD5]">
-        <div className="flex items-center space-x-2">
-          <div className="p-1.5 bg-stone-100 rounded text-stone-700">
-            <Clock className="w-4 h-4 text-emerald-600" />
+      {/* Timeline Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#243044]">
+        <div className="flex items-center space-x-2.5">
+          <div className="p-1.5 rounded-lg bg-[#00F2FE]/10 text-[#00F2FE] border border-[#00F2FE]/30">
+            <Clock className="w-4 h-4" />
           </div>
           <div>
-            <h3 className="text-xs font-mono font-bold text-stone-900 uppercase tracking-wider">
-              CHRONOLOGICAL RECONSTRUCTION TIMELINE
+            <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+              DECISION TIMELINE
             </h3>
-            <p className="text-[11px] font-mono text-stone-500">
-              SEQUENCE OF EVENTS, DECISIONS & ARCHITECTURAL PIVOTS
+            <p className="text-[11px] font-mono text-[#94A3B8]">
+              CHRONOLOGICAL SEQUENCE OF PROPOSALS, COMMITTEES & DEPLOYMENTS
             </p>
           </div>
         </div>
 
-        <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
-          {timeline.length} MILESTONES
-        </span>
+        {/* Search */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search timeline..."
+            className="w-40 sm:w-48 pl-7 pr-2 py-1 bg-[#05070D] border border-[#243044] rounded text-white text-xs font-mono placeholder:text-[#64748B] focus:outline-none focus:border-[#00F2FE]"
+          />
+          <Search className="w-3.5 h-3.5 text-[#64748B] absolute left-2 top-2" />
+        </div>
       </div>
 
-      {/* Vertical Stepped Timeline */}
-      <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#E2DDD5]">
-        {timeline.map((event, idx) => {
+      {/* Stepped Timeline */}
+      <div className="relative pl-7 space-y-5 before:content-[''] before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#243044]">
+        {filtered.map((event, idx) => {
+          const isSelected = selectedIdx === idx;
           const isExpanded = !!expandedIndices[idx];
 
           return (
-            <div key={idx} className="relative group">
-              {/* Timeline Marker Node */}
-              <div className="absolute -left-6 top-1 w-5 h-5 rounded-full bg-white border-2 border-amber-500 flex items-center justify-center group-hover:scale-110 group-hover:border-emerald-600 transition-all shadow-xs">
-                <span className="w-1.5 h-1.5 bg-amber-500 rounded-full group-hover:bg-emerald-600"></span>
+            <div
+              key={idx}
+              onClick={() => handleSelect(event, idx)}
+              className="relative group cursor-pointer transition-all"
+            >
+              {/* Stepped Marker Node */}
+              <div
+                className={`absolute -left-7 top-2 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all bg-[#0B101A] ${
+                  isSelected
+                    ? 'border-[#00F2FE] scale-110 shadow-md shadow-[#00F2FE]/30'
+                    : 'border-[#243044] group-hover:border-[#00F2FE]'
+                }`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    isSelected ? 'bg-[#00F2FE]' : 'bg-[#94A3B8] group-hover:bg-[#00F2FE]'
+                  }`}
+                ></span>
               </div>
 
-              {/* Event Content Box */}
-              <div className="bg-[#FAF8F5] border border-[#E2DDD5] hover:border-amber-400/80 rounded p-4 transition-all">
-                
-                {/* Milestone Top Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              {/* Event Card */}
+              <div
+                className={`p-4 rounded-xl border transition-all ${
+                  isSelected
+                    ? 'bg-[#151D29] border-[#00F2FE]/60 shadow-lg'
+                    : 'bg-[#0B101A] border-[#243044] hover:border-[#334155]'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center space-x-2">
-                    <span className="flex items-center space-x-1 text-xs font-mono font-semibold text-amber-800 bg-amber-100/60 px-2 py-0.5 rounded border border-amber-200">
-                      <Calendar className="w-3 h-3 text-amber-700" />
-                      <span>{event.date}</span>
+                    <span className="text-xs font-mono font-bold text-[#00F2FE] bg-[#00F2FE]/10 px-2 py-0.5 rounded border border-[#00F2FE]/30">
+                      {event.date}
                     </span>
                     {event.document_title && (
-                      <span className="text-[11px] font-mono text-stone-500 truncate max-w-xs">
+                      <span className="text-[11px] font-mono text-[#94A3B8] truncate max-w-xs">
                         via {event.document_title}
                       </span>
                     )}
                   </div>
 
                   <button
-                    onClick={() => toggleExpand(idx)}
-                    className="text-stone-400 hover:text-stone-700 p-0.5 rounded"
+                    onClick={(e) => toggleExpand(idx, e)}
+                    className="text-[#94A3B8] hover:text-white p-1"
                   >
-                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                   </button>
                 </div>
 
-                {/* Milestone Title */}
-                <h4 className="text-sm font-bold text-stone-900 mb-1.5">
+                <h4 className="text-xs font-bold text-white font-sans mb-1">
                   {event.title}
                 </h4>
 
-                {/* Event Description */}
-                <p className="text-xs text-stone-700 leading-relaxed font-sans mb-3">
+                <p className="text-[11px] text-[#94A3B8] font-sans leading-relaxed mb-2">
                   {event.description}
                 </p>
 
-                {/* Explicit Decision Callout (if any) */}
+                {/* Explicit Decision Tag */}
                 {event.decision && (
-                  <div className="p-2.5 rounded bg-white border-l-3 border-emerald-600 border border-[#E2DDD5] mb-3">
-                    <span className="text-[10px] font-mono uppercase text-emerald-800 font-bold block mb-0.5">
-                      DECISION REGISTERED:
-                    </span>
-                    <p className="text-xs font-medium text-stone-800">
-                      {event.decision}
-                    </p>
+                  <div className="p-2 rounded bg-[#101722] border-l-2 border-[#10B981] border border-[#243044] text-[11px] text-slate-200 mb-2">
+                    <strong className="text-[#10B981] block text-[10px] font-mono uppercase">
+                      Decision Commit:
+                    </strong>
+                    {event.decision}
                   </div>
                 )}
 
                 {/* Actors Involved */}
                 {event.actors && event.actors.length > 0 && (
-                  <div className="flex items-center space-x-1.5 text-xs text-stone-600 mb-2 font-mono">
-                    <Users className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                    <span className="text-[11px] text-stone-500">Key Stakeholders:</span>
-                    <div className="flex flex-wrap gap-1">
-                      {event.actors.map((actor, aIdx) => (
-                        <span
-                          key={aIdx}
-                          className="px-1.5 py-0.2 rounded bg-white border border-stone-200 text-[11px] text-stone-700"
-                        >
-                          {actor}
-                        </span>
-                      ))}
-                    </div>
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[10px] font-mono text-[#94A3B8]">
+                    <span className="text-[#64748B]">Stakeholders:</span>
+                    {event.actors.map((actor, aIdx) => (
+                      <span
+                        key={aIdx}
+                        className="px-1.5 py-0.2 rounded bg-[#151D29] border border-[#243044] text-slate-200"
+                      >
+                        {actor}
+                      </span>
+                    ))}
                   </div>
                 )}
 
-                {/* Expandable Exact Evidence Quote */}
-                {event.evidence_quote && (
-                  <div className={`mt-2 pt-2 border-t border-dashed border-[#E2DDD5] ${isExpanded ? 'block' : 'hidden'}`}>
-                    <div className="flex items-start space-x-1.5 text-xs text-stone-600 italic bg-white p-2.5 rounded border border-[#E2DDD5]">
-                      <Quote className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="text-[10px] font-mono uppercase text-stone-400 not-italic block mb-0.5">
-                          Direct Document Excerpt:
-                        </span>
-                        <span>"{event.evidence_quote}"</span>
-                      </div>
-                    </div>
+                {/* Expandable Quote Excerpt */}
+                {isExpanded && event.evidence_quote && (
+                  <div className="mt-2.5 pt-2 border-t border-[#243044] text-[11px] text-[#94A3B8] font-sans italic bg-[#05070D] p-2.5 rounded border border-[#243044]">
+                    &ldquo;{event.evidence_quote}&rdquo;
                   </div>
                 )}
-
               </div>
             </div>
           );

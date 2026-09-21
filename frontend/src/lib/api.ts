@@ -75,3 +75,9 @@ export async function seedSampleData(): Promise<{ success: boolean; message: str
   if (!res.ok) throw new Error('Failed to seed sample project data');
   return res.json();
 }
+
+export async function getGlobalGraph(): Promise<{ nodes: any[]; links: any[] }> {
+  const res = await fetch(`${API_BASE}/api/context/graph`, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Failed to fetch global relationship graph');
+  return res.json();
+}

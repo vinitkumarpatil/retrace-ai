@@ -3,52 +3,53 @@
 @tailwind utilities;
 
 :root {
-  --bg-blueprint: #FAF8F5;
-  --ink-primary: #1A232F;
-  --ink-secondary: #526071;
-  --grid-line: rgba(71, 85, 105, 0.08);
-  --border-blueprint: #E2DDD5;
-  --ochre-accent: #D97706;
-  --sage-accent: #059669;
-  --rust-accent: #DC2626;
+  --bg-primary: #05070D;
+  --bg-secondary: #0B101A;
+  --surface: #101722;
+  --elevated: #151D29;
+  --border: #243044;
+  --text-primary: #F8FAFC;
+  --text-muted: #94A3B8;
+
+  --accent-cyan: #00F2FE;
+  --accent-violet: #8B5CF6;
+  --accent-emerald: #10B981;
+  --accent-amber: #F59E0B;
+  --accent-red: #EF4444;
 }
 
 body {
-  background-color: var(--bg-blueprint);
-  color: var(--ink-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
+  margin: 0;
 }
 
-/* Blueprint Drafting Grid Background */
-.blueprint-grid {
+/* Subtle enterprise technical grid background */
+.forensic-grid {
+  background-color: #05070D;
   background-image: 
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(to right, rgba(36, 48, 68, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(36, 48, 68, 0.25) 1px, transparent 1px);
+  background-size: 32px 32px;
 }
 
-.blueprint-grid-dense {
-  background-image: 
-    linear-gradient(to right, rgba(71, 85, 105, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(71, 85, 105, 0.05) 1px, transparent 1px);
-  background-size: 12px 12px;
+/* Subtle glass surface */
+.glass-surface {
+  background: rgba(16, 23, 34, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid #243044;
 }
 
-/* Custom architectural hairline borders */
-.drafting-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E2DDD5;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+.glass-nav {
+  background: rgba(11, 16, 26, 0.92);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid #243044;
 }
 
-.drafting-card:hover {
-  border-color: #CBD5E1;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Technical blueprint corner ticks */
+/* Technical hairpins */
 .corner-ticks {
   position: relative;
 }
@@ -60,9 +61,10 @@ body {
   left: -1px;
   width: 6px;
   height: 6px;
-  border-top: 2px solid #94A3B8;
-  border-left: 2px solid #94A3B8;
+  border-top: 2px solid #00F2FE;
+  border-left: 2px solid #00F2FE;
   pointer-events: none;
+  opacity: 0.85;
 }
 
 .corner-ticks::after {
@@ -72,26 +74,52 @@ body {
   right: -1px;
   width: 6px;
   height: 6px;
-  border-bottom: 2px solid #94A3B8;
-  border-right: 2px solid #94A3B8;
+  border-bottom: 2px solid #00F2FE;
+  border-right: 2px solid #00F2FE;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+/* Sonar status ripple */
+.sonar-emitter {
+  position: relative;
+}
+
+.sonar-emitter::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(0, 242, 254, 0.7);
+  animation: sonar 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
   pointer-events: none;
 }
 
-/* Clean technical scrollbar */
+.sonar-emitter-emerald::before {
+  border-color: rgba(16, 185, 129, 0.7);
+}
+
+/* Enterprise scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #FAF8F5;
+  background: #05070D;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: #243044;
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #00F2FE;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(0, 242, 254, 0.3);
+  color: #FFFFFF;
 }

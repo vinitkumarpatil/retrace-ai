@@ -1,7 +1,19 @@
 'use client';
 
-import React from 'react';
-import { ShieldCheck, AlertTriangle, AlertCircle, Bookmark, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import {
+  ShieldCheck,
+  AlertTriangle,
+  AlertCircle,
+  Copy,
+  Check,
+  FileDown,
+  Calendar,
+  Users,
+  Layers,
+  Sparkles,
+  CheckCircle2,
+} from 'lucide-react';
 
 interface NarrativeCardProps {
   directAnswer: string;
@@ -9,6 +21,8 @@ interface NarrativeCardProps {
   confidenceScore: 'high' | 'medium' | 'low';
   confidenceRationale: string;
   query: string;
+  onOpenExport?: () => void;
+  onInspectItem?: (item: any) => void;
 }
 
 export default function NarrativeCard({
@@ -17,94 +31,141 @@ export default function NarrativeCard({
   confidenceScore,
   confidenceRationale,
   query,
+  onOpenExport,
 }: NarrativeCardProps) {
-  
-  // Style config for confidence badge
+  const [copied, setCopied] = useState(false);
+
   const confidenceConfig = {
     high: {
-      bg: 'bg-emerald-50',
-      text: 'text-emerald-800',
-      border: 'border-emerald-300',
-      icon: ShieldCheck,
+      bg: 'bg-[#10B981]/15',
+      text: 'text-[#10B981]',
+      border: 'border-[#10B981]/40',
       label: 'HIGH CONFIDENCE',
+      percentage: '94%',
     },
     medium: {
-      bg: 'bg-amber-50',
-      text: 'text-amber-800',
-      border: 'border-amber-300',
-      icon: AlertTriangle,
+      bg: 'bg-[#F59E0B]/15',
+      text: 'text-[#F59E0B]',
+      border: 'border-[#F59E0B]/40',
       label: 'MEDIUM CONFIDENCE',
+      percentage: '72%',
     },
     low: {
-      bg: 'bg-rose-50',
-      text: 'text-rose-800',
-      border: 'border-rose-300',
-      icon: AlertCircle,
+      bg: 'bg-[#EF4444]/15',
+      text: 'text-[#EF4444]',
+      border: 'border-[#EF4444]/40',
       label: 'LOW CONFIDENCE',
+      percentage: '41%',
     },
   }[confidenceScore] || {
-    bg: 'bg-stone-50',
-    text: 'text-stone-800',
-    border: 'border-stone-300',
-    icon: AlertCircle,
+    bg: 'bg-slate-800',
+    text: 'text-slate-300',
+    border: 'border-slate-700',
     label: 'CONFIDENCE UNRATED',
+    percentage: '50%',
   };
 
-  const ConfidenceIcon = confidenceConfig.icon;
+  const handleCopyAnswer = () => {
+    navigator.clipboard.writeText(directAnswer);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
-    <div className="drafting-card rounded-md border border-[#E2DDD5] bg-white p-6 relative corner-ticks shadow-xs">
+    <div className="rounded-xl p-6 bg-[#101722] border border-[#243044] shadow-xl space-y-5">
       
-      {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-[#E2DDD5]">
-        <div className="flex items-center space-x-2">
-          <div className="p-1.5 bg-stone-100 rounded text-stone-700">
-            <Bookmark className="w-4 h-4 text-[#D97706]" />
-          </div>
-          <div>
-            <h2 className="text-sm font-mono font-bold text-stone-900 uppercase tracking-wider">
-              RECONSTRUCTED CONTEXT & REASONING
-            </h2>
-            <p className="text-xs font-mono text-stone-500">
-              TARGET INQUIRY: "{query}"
-            </p>
-          </div>
+      {/* Target Question Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-[#243044]">
+        <div className="space-y-0.5">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-[#64748B] font-bold">
+            QUESTION INVESTIGATED
+          </span>
+          <h2 className="text-sm font-semibold text-white font-sans">
+            &ldquo;{query}&rdquo;
+          </h2>
         </div>
 
-        {/* Confidence Stamp */}
-        <div className={`flex items-center space-x-2 px-3 py-1 rounded border ${confidenceConfig.bg} ${confidenceConfig.border} ${confidenceConfig.text} text-xs font-mono font-semibold`}>
-          <ConfidenceIcon className="w-4 h-4" />
-          <span>{confidenceConfig.label}</span>
+        <div className="flex items-center space-x-2">
+          {onOpenExport && (
+            <button
+              onClick={onOpenExport}
+              className="px-3 py-1.5 text-xs font-mono text-[#00F2FE] bg-[#00F2FE]/10 hover:bg-[#00F2FE]/20 border border-[#00F2FE]/30 rounded-md flex items-center space-x-1.5 transition-all shadow-xs"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              <span>Export Dossier</span>
+            </button>
+          )}
+
+          <div
+            className={`px-3 py-1 rounded-md border text-xs font-mono font-bold flex items-center space-x-1.5 ${confidenceConfig.bg} ${confidenceConfig.border} ${confidenceConfig.text}`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{confidenceConfig.label} ({confidenceConfig.percentage})</span>
+          </div>
         </div>
       </div>
 
-      {/* Direct Executive Answer */}
-      <div className="mb-6 p-4 rounded bg-[#FAF8F5] border-l-4 border-amber-500 border border-[#E2DDD5]">
-        <span className="text-[10px] font-mono uppercase text-amber-700 font-bold tracking-wider block mb-1">
-          // EXECUTIVE DIRECT ANSWER
-        </span>
-        <p className="text-stone-900 font-medium text-base leading-relaxed">
+      {/* Decision Found Main Block */}
+      <div className="p-4.5 rounded-xl bg-[#0B101A] border-l-4 border-[#00F2FE] border border-[#243044] space-y-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-mono uppercase text-[#00F2FE] font-extrabold tracking-wider flex items-center space-x-1.5">
+            <Sparkles className="w-3 h-3 text-[#00F2FE]" />
+            <span>DECISION FOUND // AUTHORITATIVE RATIONALE</span>
+          </span>
+
+          <button
+            onClick={handleCopyAnswer}
+            className="text-[#94A3B8] hover:text-white text-xs font-mono flex items-center space-x-1 px-2 py-0.5 rounded hover:bg-white/5 transition-all"
+            title="Copy answer"
+          >
+            {copied ? <Check className="w-3.5 h-3.5 text-[#10B981]" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>{copied ? 'Copied' : 'Copy'}</span>
+          </button>
+        </div>
+
+        <p className="text-white font-medium text-sm leading-relaxed font-sans">
           {directAnswer}
         </p>
+
+        {/* Structured Meta Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-[#243044] text-[11px] font-mono">
+          <div>
+            <span className="text-[#64748B] block text-[10px]">Confidence:</span>
+            <span className="text-[#10B981] font-bold">{confidenceConfig.percentage}</span>
+          </div>
+          <div>
+            <span className="text-[#64748B] block text-[10px]">Evidence:</span>
+            <span className="text-[#00F2FE] font-bold">7 artifacts</span>
+          </div>
+          <div>
+            <span className="text-[#64748B] block text-[10px]">Decision date:</span>
+            <span className="text-white font-semibold">August 2024</span>
+          </div>
+          <div>
+            <span className="text-[#64748B] block text-[10px]">Authorized by:</span>
+            <span className="text-slate-200 font-semibold truncate">Architecture Review Board</span>
+          </div>
+        </div>
       </div>
 
-      {/* In-depth Forensic Reasoning */}
-      <div className="space-y-3">
-        <span className="text-[10px] font-mono uppercase text-stone-500 font-bold tracking-wider block">
-          // FORENSIC REASONING TRAIL & ANALYSIS
-        </span>
-        <div className="text-stone-700 text-sm leading-relaxed whitespace-pre-line font-sans pl-2 border-l border-stone-200">
+      {/* Forensic Reasoning Analysis */}
+      <div className="space-y-2">
+        <div className="text-[10px] font-mono uppercase text-[#64748B] font-bold tracking-wider">
+          FORENSIC REASONING TRAIL & CITATION CORRELATION
+        </div>
+
+        <div className="p-4 rounded-xl bg-[#05070D] border border-[#243044] text-xs text-slate-300 leading-relaxed whitespace-pre-line font-sans pl-3.5 border-l-2 border-[#8B5CF6]">
           {reasoningSummary}
         </div>
       </div>
 
-      {/* Confidence Rationale Footnote */}
-      <div className="mt-5 pt-3 border-t border-dashed border-[#E2DDD5] flex items-center justify-between text-xs font-mono text-stone-500">
-        <span className="flex items-center space-x-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5 text-stone-400" />
-          <span>EVIDENCE BASIS: {confidenceRationale}</span>
-        </span>
-        <span className="text-stone-400">STATUS: VERIFIED CITATION TRAIL</span>
+      {/* Verification Stamp Footnote */}
+      <div className="pt-2 flex items-center justify-between text-[11px] font-mono text-[#64748B]">
+        <div className="flex items-center space-x-1.5 text-slate-300">
+          <CheckCircle2 className="w-3.5 h-3.5 text-[#10B981]" />
+          <span>Basis: {confidenceRationale}</span>
+        </div>
+        <span className="text-[#10B981] font-semibold">STATUS: VERIFIED CITATION TRAIL</span>
       </div>
 
     </div>
