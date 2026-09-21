@@ -3,52 +3,224 @@
 @tailwind utilities;
 
 :root {
-  --bg-blueprint: #FAF8F5;
-  --ink-primary: #1A232F;
-  --ink-secondary: #526071;
-  --grid-line: rgba(71, 85, 105, 0.08);
-  --border-blueprint: #E2DDD5;
-  --ochre-accent: #D97706;
-  --sage-accent: #059669;
-  --rust-accent: #DC2626;
+  --bg-cosmic: #040714;
+  --panel-cosmic: #0A0F24;
+  --card-cosmic: #0E1630;
+  --border-cosmic: #1E2C54;
+  --border-highlight: #2B3F73;
+  
+  --neon-cyan: #00F2FE;
+  --neon-violet: #A855F7;
+  --neon-emerald: #00DF89;
+  --neon-pink: #FF007A;
+  --neon-amber: #FBBF24;
 }
 
 body {
-  background-color: var(--bg-blueprint);
-  color: var(--ink-primary);
+  background-color: var(--bg-cosmic);
+  color: #F8FAFC;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* Blueprint Drafting Grid Background */
+/* Cosmic Cyber Mesh Background with animated shifting ambient gradients */
+.forensic-grid {
+  background-color: #040714;
+  background-image: 
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(139, 92, 246, 0.22), transparent),
+    radial-gradient(circle at 10% 40%, rgba(0, 242, 254, 0.08), transparent 35%),
+    radial-gradient(circle at 90% 70%, rgba(255, 0, 122, 0.06), transparent 35%),
+    linear-gradient(to right, rgba(0, 242, 254, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 242, 254, 0.04) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 36px 36px, 36px 36px;
+}
+
 .blueprint-grid {
+  background-color: #040714;
   background-image: 
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: 24px 24px;
+    radial-gradient(circle at 50% 0%, rgba(0, 242, 254, 0.12) 0%, transparent 60%),
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 30px 30px, 30px 30px;
 }
 
-.blueprint-grid-dense {
-  background-image: 
-    linear-gradient(to right, rgba(71, 85, 105, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(71, 85, 105, 0.05) 1px, transparent 1px);
-  background-size: 12px 12px;
+/* Animated Aurora Border for the Navbar */
+.animated-nav-border {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    #00F2FE 0%,
+    #A855F7 25%,
+    #00DF89 50%,
+    #FF007A 75%,
+    #00F2FE 100%
+  );
+  background-size: 300% 100%;
+  animation: gradientX 5s linear infinite;
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.6);
 }
 
-/* Custom architectural hairline borders */
+/* Glassmorphism Forensic Card with glowing border */
+.forensic-card {
+  background: rgba(14, 22, 48, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(30, 44, 84, 0.9);
+  box-shadow: 0 6px 25px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.07);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.forensic-card:hover {
+  border-color: rgba(43, 63, 115, 1);
+  box-shadow: 0 12px 40px -6px rgba(0, 0, 0, 0.7), inset 0 1px 0 0 rgba(0, 242, 254, 0.15);
+  transform: translateY(-2px);
+}
+
 .drafting-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E2DDD5;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(14, 22, 48, 0.88);
+  backdrop-filter: blur(14px);
+  border: 1px solid #1E2C54;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .drafting-card:hover {
-  border-color: #CBD5E1;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border-color: #2B3F73;
 }
 
-/* Technical blueprint corner ticks */
+/* Rotating Gradient Border Beam */
+.border-beam-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+}
+
+.border-beam-card::before {
+  content: "";
+  position: absolute;
+  inset: -150%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    transparent 70deg,
+    #00F2FE 120deg,
+    #A855F7 180deg,
+    transparent 240deg
+  );
+  animation: spin 6s linear infinite;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.border-beam-content {
+  position: relative;
+  background: #0E1630;
+  border-radius: inherit;
+  margin: 1px;
+}
+
+/* Shimmering Metallic Gradient Text */
+.shimmer-text {
+  background: linear-gradient(90deg, #FFFFFF 0%, #00F2FE 30%, #A855F7 60%, #00DF89 85%, #FFFFFF 100%);
+  background-size: 250% auto;
+  color: transparent;
+  -webkit-background-clip: text;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+/* Interactive Shimmer Button Sweep */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-shimmer::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent,
+    rgba(255, 255, 255, 0.22),
+    transparent
+  );
+  transform: rotate(30deg) translateX(-120%);
+  transition: transform 0.8s ease-out;
+}
+
+.btn-shimmer:hover::after {
+  transform: rotate(30deg) translateX(120%);
+}
+
+/* Sonar Ripple Pulse for Decision Markers */
+.sonar-emitter {
+  position: relative;
+}
+
+.sonar-emitter::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 2px solid rgba(0, 242, 254, 0.8);
+  animation: sonar 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+  pointer-events: none;
+}
+
+.sonar-emitter-emerald::before {
+  border-color: rgba(0, 223, 137, 0.8);
+}
+
+.sonar-emitter-pink::before {
+  border-color: rgba(255, 0, 122, 0.8);
+}
+
+/* Flowing Light Bead down the Timeline Line */
+.timeline-track {
+  position: relative;
+}
+
+.timeline-track::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 3px;
+  height: 40px;
+  background: linear-gradient(to bottom, transparent, #00F2FE, #A855F7, transparent);
+  box-shadow: 0 0 10px #00F2FE, 0 0 15px #A855F7;
+  border-radius: 9999px;
+  animation: flowDown 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Scanline Radar Sweep */
+.scanline-box {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanline-box::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(to right, transparent, rgba(0, 242, 254, 0.9), transparent);
+  box-shadow: 0 0 14px rgba(0, 242, 254, 0.9);
+  animation: scan 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Technical Corner Accents */
 .corner-ticks {
   position: relative;
 }
@@ -58,11 +230,12 @@ body {
   position: absolute;
   top: -1px;
   left: -1px;
-  width: 6px;
-  height: 6px;
-  border-top: 2px solid #94A3B8;
-  border-left: 2px solid #94A3B8;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #00F2FE;
+  border-left: 2px solid #00F2FE;
   pointer-events: none;
+  opacity: 0.9;
 }
 
 .corner-ticks::after {
@@ -70,28 +243,52 @@ body {
   position: absolute;
   bottom: -1px;
   right: -1px;
-  width: 6px;
-  height: 6px;
-  border-bottom: 2px solid #94A3B8;
-  border-right: 2px solid #94A3B8;
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid #00F2FE;
+  border-right: 2px solid #00F2FE;
   pointer-events: none;
+  opacity: 0.9;
 }
 
-/* Clean technical scrollbar */
+/* Glow effects */
+.glow-cyan {
+  box-shadow: 0 0 25px -4px rgba(0, 242, 254, 0.4);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 25px -4px rgba(0, 223, 137, 0.4);
+}
+
+.glow-violet {
+  box-shadow: 0 0 25px -4px rgba(168, 85, 247, 0.4);
+}
+
+.glow-pink {
+  box-shadow: 0 0 25px -4px rgba(255, 0, 122, 0.4);
+}
+
+/* High-tech Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #FAF8F5;
+  background: #040714;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 3px;
+  background: #1E2C54;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
+  background: #00F2FE;
+}
+
+/* Text selections */
+::selection {
+  background-color: rgba(0, 242, 254, 0.35);
+  color: #FFFFFF;
 }
