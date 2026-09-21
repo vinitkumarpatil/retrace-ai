@@ -70,6 +70,7 @@ export async function listDocuments(): Promise<DocumentItem[]> {
 
 export async function seedSampleData(): Promise<{ success: boolean; message: string }> {
   const res = await fetch(`${API_BASE}/api/context/seed`, {
+
     method: 'POST',
   });
   if (!res.ok) throw new Error('Failed to seed sample project data');

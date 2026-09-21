@@ -60,62 +60,117 @@ async def get_global_graph_endpoint():
 @router.post("/api/context/seed")
 async def seed_sample_project_data():
     """
-    Seed realistic historical project records: 'Project Meridian: The Architecture Pivot'.
-    Demonstrates lost context recovery across Slack transcripts, RFCs, and meeting notes.
+    Seed realistic historical project records: 'Project Phoenix: Architecture Migration'.
+    Demonstrates lost context recovery across RFCs, Slack transcripts, meeting notes, and incident reports.
+    The demo question: 'Why did we change the architecture?' — answerable from these records,
+    but with a critical gap: WHO specifically approved Architecture B (the new design).
     """
     sample_docs = [
         {
-            "title": "RFC-204: Monolith Migration to Event-Driven Microservices",
+            "title": "RFC-037: Payment Processing Architecture Overhaul",
             "source_type": "text",
             "content": (
-                "RFC-204 | Author: Alice Chen (Principal Architect) | Date: 2024-07-15\n"
-                "Status: Approved by Engineering Committee (Bob Martinez, Dev Director; Marcus Vance, VP Eng)\n\n"
-                "Context:\n"
-                "Our monolith backend in Django is experiencing severe write lock contention during peak checkout events. "
-                "On July 10, 2024, our latency spiked to 4.2 seconds. "
-                "Proposal:\n"
-                "We propose migrating the Order and Payment domains into independent Go services communicating via Apache Kafka. "
-                "Database layer will use PostgreSQL with pgvector for catalog recommendations. "
+                "RFC-037 | Author: Sarah Kim (Staff Engineer) | Date: 2024-09-03\n"
+                "Status: Approved by Architecture Board\n\n"
+                "Problem Statement:\n"
+                "Our current payment processing pipeline (Architecture A) uses a synchronous REST-based approach "
+                "with a single PostgreSQL database handling all transaction records. During Black Friday 2023, "
+                "we experienced a cascading failure when the payment database hit 95% CPU utilization, "
+                "resulting in $2.3M in lost revenue over 47 minutes.\n\n"
+                "Proposed Solution — Architecture B:\n"
+                "Migrate to an event-driven architecture using:\n"
+                "- Apache Kafka for asynchronous transaction event streaming\n"
+                "- Separate PostgreSQL databases per bounded context (orders, payments, inventory)\n"
+                "- Saga pattern for distributed transaction coordination\n"
+                "- Redis for real-time transaction status caching\n\n"
                 "Rejected Alternatives:\n"
-                "- Keeping MongoDB: Rejected due to lacking ACID transaction isolation required for financial reconciliation. "
-                "- gRPC Synchronous Mesh: Rejected due to cascading failure risks.\n\n"
-                "Decision:\n"
-                "Adopt Kafka + PostgreSQL starting August 1, 2024. Team Nova will execute the migration in Phase 1."
+                "- Message Queue (RabbitMQ): Rejected due to insufficient throughput for peak loads (tested at 12k msg/s vs required 50k msg/s)\n"
+                "- Shared Database with Read Replicas: Rejected because it doesn't solve the write contention root cause\n"
+                "- Cloud-native payment processor (Stripe Connect): Rejected for vendor lock-in concerns and custom pricing rules\n\n"
+                "Timeline:\n"
+                "- Phase 1 (Sep-Oct 2024): Payment service extraction + Kafka setup\n"
+                "- Phase 2 (Nov-Dec 2024): Order service migration + Saga implementation\n"
+                "- Phase 3 (Jan 2025): Inventory service + full cutover\n\n"
+                "Approval:\n"
+                "Architecture B was approved for implementation. Team Atlas will execute Phase 1 under Sarah Kim's technical leadership."
             ),
-            "metadata": {"author": "Alice Chen", "document_type": "RFC"}
+            "metadata": {"author": "Sarah Kim", "document_type": "RFC", "project": "Phoenix"}
         },
         {
-            "title": "Slack Transcript #arch-council: Database Migration Emergency",
+            "title": "Slack Transcript #payments-team: Architecture B Kickoff",
             "source_type": "text",
             "content": (
-                "[2024-08-12 14:22] @alice_chen: We hit an unexpected blocker with the PostgreSQL pgvector deployment on AWS RDS. "
-                "The vector index build is taking 45 minutes and locking catalog reads.\n"
-                "[2024-08-12 14:28] @bob_martinez: Did we test HNSW vs IVFFlat indexes before migrating production traffic?\n"
-                "[2024-08-12 14:35] @dave_sre: We tested with 10k rows in staging, but production has 3.8M embeddings.\n"
-                "[2024-08-12 14:40] @alice_chen: Decision: We are switching immediately to HNSW indexing with m=16, ef_construction=64. "
-                "Also scaling RDS instance from db.r6g.large to db.r6g.2xlarge. Dave, please execute this in window #2.\n"
-                "[2024-08-12 15:10] @marcus_vance: Approved the budget increase for the 2xlarge instance for Q3."
+                "[2024-09-05 09:15] @sarah_kim: Quick update — Architecture B got the green light yesterday. "
+                "We need to start sprint planning for Phase 1 immediately.\n"
+                "[2024-09-05 09:22] @james_dev: Wait, which alternative won? I thought we were leaning toward the read-replica approach.\n"
+                "[2024-09-05 09:30] @sarah_kim: No, Architecture B is the full event-driven migration. "
+                "The board reviewed both options and decided the read-replica approach was a band-aid.\n"
+                "[2024-09-05 09:45] @priya_sre: Makes sense. I've already started benchmarking Kafka vs the current REST pipeline. "
+                "Early numbers show 4x throughput improvement.\n"
+                "[2024-09-05 10:02] @mike_pm: Who signed off on the budget for the additional infrastructure? "
+                "We're talking about 3 new RDS instances plus the Kafka cluster.\n"
+                "[2024-09-05 10:15] @sarah_kim: The approval came through the architecture board. "
+                "I don't have the specific signatory name — I just got the 'Approved' notification.\n"
+                "[2024-09-05 10:20] @mike_pm: We should track that. Someone needs to own the infrastructure cost justification."
             ),
-            "metadata": {"channel": "#arch-council", "date": "2024-08-12"}
+            "metadata": {"channel": "#payments-team", "date": "2024-09-05", "project": "Phoenix"}
         },
         {
-            "title": "Incident Retrospective #88: Vector Index Lockout",
+            "title": "Incident Retrospective #112: Payment Service Outage During Migration",
             "source_type": "text",
             "content": (
-                "Incident Retrospective #88 | Date: 2024-08-20\n"
-                "Facilitator: Dave Miller (Senior SRE)\n\n"
+                "Incident Retrospective #112 | Date: 2024-10-18\n"
+                "Facilitator: Priya Sharma (Senior SRE)\n\n"
                 "What Happened:\n"
-                "On August 12, 2024, the catalog search cluster suffered a 32-minute degradation during the PostgreSQL vector indexing operation.\n"
+                "On October 15, 2024, during Phase 1 migration of the payment service to Architecture B, "
+                "a misconfigured Kafka consumer group caused 340 payment transactions to be processed twice. "
+                "This resulted in duplicate charges affecting 127 customers.\n\n"
+                "Timeline:\n"
+                "- 14:22: Deployment of payment-service v2.1.0 with new Kafka consumers\n"
+                "- 14:35: Alert triggered — duplicate transaction IDs detected in payment_log table\n"
+                "- 14:41: Incident declared (SEV-2)\n"
+                "- 14:58: Kafka consumer group reset, duplicate processing halted\n"
+                "- 15:30: Rollback to v2.0.8, duplicate transactions reversed\n"
+                "- 16:15: All customer charges corrected, incident resolved\n\n"
                 "Root Cause:\n"
-                "Lack of concurrent indexing flag and memory starvation on RDS.\n\n"
-                "Action Items & Decisions:\n"
-                "1. Enforce CONCURRENTLY flag for all future index creations (Owner: Dave Miller, Completed: 2024-08-14).\n"
-                "2. Standardize Supabase for local staging environments to prevent configuration drift between local dev and cloud RDS.\n"
-                "3. Alice Chen to publish revised Vector Store Guidelines by end of August.\n\n"
-                "Unresolved Context:\n"
-                "Note: It was never documented who originally authored the 10k mock dataset used in staging tests."
+                "Kafka consumer group was not configured with idempotency checks. The consumer offsets "
+                "were reset during a rebalance event, causing reprocessing of already-committed transactions.\n\n"
+                "Action Items:\n"
+                "1. Implement idempotency keys in payment processing pipeline (Owner: James Dev, Due: 2024-10-25)\n"
+                "2. Add Kafka consumer lag monitoring and alerting (Owner: Priya Sharma, Due: 2024-10-22)\n"
+                "3. Create runbook for Kafka consumer group incidents (Owner: Sarah Kim, Due: 2024-10-30)\n"
+                "4. Conduct Architecture B readiness review before Phase 2 (Owner: Architecture Board, Due: 2024-11-01)\n\n"
+                "Lessons Learned:\n"
+                "The event-driven architecture provides better isolation, but requires stricter idempotency guarantees. "
+                "Architecture A's synchronous nature would have prevented this specific failure mode, "
+                "but would have suffered the cascading failure under load instead."
             ),
-            "metadata": {"incident_id": "INC-88", "date": "2024-08-20"}
+            "metadata": {"incident_id": "INC-112", "date": "2024-10-18", "project": "Phoenix"}
+        },
+        {
+            "title": "Architecture Board Meeting Notes — Q4 2024 Review",
+            "source_type": "text",
+            "content": (
+                "Architecture Board Meeting | Date: 2024-11-08\n"
+                "Attendees: Elena Torres (CTO), Sarah Kim (Staff Engineer), Raj Patel (VP Engineering)\n\n"
+                "Agenda Item 3: Project Phoenix — Architecture B Progress Review\n\n"
+                "Status Update:\n"
+                "- Phase 1 completed (Oct 2024): Payment service successfully migrated to event-driven architecture\n"
+                "- Incident #112 addressed: Idempotency controls now production-ready\n"
+                "- Phase 2 kickoff scheduled for Nov 12, 2024\n\n"
+                "Key Discussion Points:\n"
+                "1. Sarah Kim presented Phase 1 metrics: 4.2x throughput improvement, 99.97% uptime post-migration\n"
+                "2. Raj Patel raised concern about team capacity for Phase 2 during holiday season\n"
+                "3. Elena Torres asked about the original approval process — who specifically authorized Architecture B?\n"
+                "   Response: The approval notification came through the automated architecture board system. "
+                "   Individual signatory was not recorded in the system. This is a known process gap.\n"
+                "4. Decision: Phase 2 will proceed as planned, with enhanced monitoring and rollback procedures.\n\n"
+                "Unresolved Items:\n"
+                "- The identity of the Architecture B approver remains undocumented\n"
+                "- Budget justification for the additional infrastructure was submitted but not formally approved in writing\n"
+                "- Need to establish a proper approval audit trail for future architecture decisions"
+            ),
+            "metadata": {"meeting_type": "Architecture Board", "date": "2024-11-08", "project": "Phoenix"}
         }
     ]
 
@@ -153,6 +208,6 @@ async def seed_sample_project_data():
 
     return {
         "success": True,
-        "message": f"Successfully seeded {len(seeded_ids)} historical records for Project Meridian.",
+        "message": f"Successfully seeded {len(seeded_ids)} historical records for Project Phoenix.",
         "document_ids": seeded_ids
     }

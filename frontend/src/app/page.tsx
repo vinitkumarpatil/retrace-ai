@@ -58,7 +58,7 @@ export default function DashboardPage() {
       await seedSampleData();
       await fetchDocs();
       // Auto run first sample query to showcase the system immediately
-      await handleSearch("Why did we migrate to PostgreSQL and change the vector index on August 12?");
+      await handleSearch("Why did we change the architecture?");
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to seed sample project records.');
     } finally {
@@ -170,7 +170,7 @@ export default function DashboardPage() {
                 className="px-4 py-2 bg-[#1E293B] hover:bg-stone-800 disabled:bg-stone-400 text-white rounded text-xs font-mono font-semibold flex items-center space-x-2 transition-all shadow-xs"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isSeeding ? 'animate-spin text-amber-400' : 'text-amber-400'}`} />
-                <span>{isSeeding ? "Seeding Scenario..." : "Load Meridian Demo Scenario"}</span>
+                <span>{isSeeding ? "Seeding Scenario..." : "Load Project Phoenix Demo"}</span>
               </button>
 
               <button

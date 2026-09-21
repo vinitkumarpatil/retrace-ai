@@ -10,7 +10,7 @@
 
 ---
 
-## 🏛 Architectural Blueprint Aesthetic
+## Architectural Blueprint Aesthetic
 
 Designed around an architectural drafting aesthetic:
 - **Parchment Canvas**: Cream drafting background (`#FAF8F5`) with technical grid coordinate patterns.
@@ -19,7 +19,7 @@ Designed around an architectural drafting aesthetic:
 
 ---
 
-## ⚡ System Architecture
+## System Architecture
 
 ```mermaid
 flowchart TD
@@ -64,7 +64,7 @@ flowchart TD
 
 ---
 
-## 🚀 Tech Stack
+## Tech Stack
 
 - **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide Icons
 - **Graph Visualizer**: `react-force-graph-2d` (Client-side HTML5 Canvas force-directed topology)
@@ -77,7 +77,7 @@ flowchart TD
 
 ---
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 retrace-ai/
@@ -129,7 +129,7 @@ retrace-ai/
 
 ---
 
-## 🛠 Quick Start Setup
+## Quick Start Setup
 
 ### Prerequisites
 - Node.js 18+ & npm
@@ -196,15 +196,23 @@ npm run dev
 
 ---
 
-## 🧪 Testing the Application
+## Testing the Application
 
 ### Option A: One-Click Demo Load
 1. Open `http://localhost:3000` in your browser.
-2. Click **"Load Meridian Demo"** in the top navigation or hero banner.
-3. This seeds **"Project Meridian: The Architecture Pivot"** (an RFC, an emergency Slack incident thread, and a retrospective).
+2. Click **"Load Project Phoenix Demo"** in the top navigation or hero banner.
+3. This seeds **"Project Phoenix: Architecture Migration"** (RFC-037, Slack transcripts, incident retrospective, and architecture board meeting notes).
 4. ReTrace will automatically execute a forensic recovery query:
-   > *"Why did we switch to PostgreSQL and change the vector index on August 12?"*
+   > *"Why did we change the architecture?"*
 5. Inspect the reconstructed **Narrative**, **Stepped Timeline**, **Interactive Entity Graph**, and **Missing Context Flags**.
+
+### Demo Question Types
+The demo supports multiple question types to showcase the system's capabilities:
+- **Decision questions**: "Why did we change the architecture?"
+- **Attribution questions**: "Who approved Architecture B?"
+- **Incident questions**: "What happened during the payment outage?"
+- **Analysis questions**: "What alternatives were considered and rejected?"
+- **Timeline questions**: "What is the migration timeline?"
 
 ### Option B: Run Automated Integration Tests
 ```bash
@@ -214,7 +222,7 @@ cd backend
 
 ---
 
-## 🗄 Optional: Supabase & pgvector Setup
+## Optional: Supabase & pgvector Setup
 
 To run ReTrace directly against Supabase PostgreSQL:
 1. Create a project at [supabase.com](https://supabase.com).
@@ -228,11 +236,27 @@ To run ReTrace directly against Supabase PostgreSQL:
 
 ---
 
-## 🛡 Security & Privacy
+## Security & Privacy
 - **API Keys**: All API keys and environment files are strictly excluded via `.gitignore`.
 - **Zero Hallucination Guarantee**: When historical records lack specific details, ReTrace refuses to fabricate rationale and explicitly lists them as unrecovered items in the Missing Context panel.
 
+## Demo Scenario: Project Phoenix
+
+The demo showcases **Project Phoenix: Architecture Migration** — a realistic scenario where a team migrates from a synchronous REST-based payment processing system (Architecture A) to an event-driven microservices architecture (Architecture B).
+
+### The Missing Context Gap
+The demo deliberately includes a critical gap: **Who specifically approved Architecture B?** The documents mention it was approved by the "Architecture Board" but no individual signatory is recorded. This demonstrates ReTrace's ability to:
+1. Answer the question using available evidence
+2. Explicitly flag the missing information
+3. Suggest investigation steps to recover the lost context
+
+### Demo Documents
+1. **RFC-037**: Payment Processing Architecture Overhaul (formal proposal)
+2. **Slack Transcript**: Architecture B kickoff discussion
+3. **Incident Retrospective #112**: Payment service outage during migration
+4. **Architecture Board Meeting Notes**: Q4 2024 review
+
 ---
 
-## 📄 License
+## License
 MIT License. Created with Google Gemini & Antigravity.

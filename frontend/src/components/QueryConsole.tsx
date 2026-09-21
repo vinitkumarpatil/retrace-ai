@@ -9,10 +9,10 @@ interface QueryConsoleProps {
 }
 
 const SAMPLE_QUESTIONS = [
-  "Why did we migrate to PostgreSQL and change the vector index on August 12?",
-  "Who approved scaling the AWS RDS instances to db.r6g.2xlarge?",
-  "What happened during Incident Retrospective #88 and what was decided?",
-  "Why was MongoDB rejected for the Order and Payment domains?",
+  "Why did we change the architecture?",
+  "Who approved Architecture B for implementation?",
+  "What happened during the payment service outage?",
+  "What alternatives were considered and rejected?",
 ];
 
 export default function QueryConsole({ onSearch, isLoading }: QueryConsoleProps) {
