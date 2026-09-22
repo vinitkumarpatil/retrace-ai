@@ -2,27 +2,21 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { 
-  Share2, 
-  ZoomIn, 
-  ZoomOut, 
-  Maximize2, 
-  Minimize2, 
-  X, 
-  Filter, 
-  Layers, 
-  Info, 
-  ChevronRight,
-  Sparkles
+import {
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Minimize2,
+  X,
+  Filter,
 } from 'lucide-react';
 import { EntityNode, EntityLink } from '@/lib/types';
 
-// Dynamically import ForceGraph2D with SSR disabled
 const ForceGraph2D = dynamic(() => import('react-force-graph-2d'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-80 flex items-center justify-center bg-slate-50 dark:bg-[#090D16] text-xs text-slate-400">
-      Initializing Graph Canvas...
+    <div className="w-full h-80 grid place-items-center text-[12px] text-ink-faint">
+      Drawing the map…
     </div>
   ),
 });
@@ -36,6 +30,17 @@ interface RelationshipGraphProps {
 
 const ENTITY_TYPES = ['all', 'person', 'system', 'decision', 'team', 'concept'] as const;
 
+// Node palette — tuned to the case-file tones (readable on both paper and microfilm).
+const TYPE_COLOR: Record<string, string> = {
+  person: '#4A6A4A',    // archival green
+  system: '#3E6478',    // muted teal-slate
+  decision: '#9E3323',  // stamp oxblood
+  team: '#8A6D3B',      // sienna
+  concept: '#8A8374',   // ink-faint
+  document: '#5C574C',
+  date: '#A37A2B',
+};
+
 export default function RelationshipGraph({
   nodes,
   links,
@@ -47,11 +52,20 @@ export default function RelationshipGraph({
   const [dimensions, setDimensions] = useState({ width: 600, height: 440 });
   const [selectedType, setSelectedType] = useState<string>('all');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
 
-  // Responsive dimension sync
+  // Track theme so canvas link colors adapt.
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'));
+    check();
+    const obs = new MutationObserver(check);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => obs.disconnect();
+  }, []);
+
   useEffect(() => {
     if (!containerRef.current) return;
-    const updateDimensions = () => {
+    const update = () => {
       if (containerRef.current) {
         setDimensions({
           width: containerRef.current.clientWidth,
@@ -59,40 +73,19 @@ export default function RelationshipGraph({
         });
       }
     };
-    updateDimensions();
-
-    const observer = new ResizeObserver(() => updateDimensions());
+    update();
+    const observer = new ResizeObserver(update);
     observer.observe(containerRef.current);
-
     return () => observer.disconnect();
   }, [isFullscreen]);
 
-  const getNodeColor = (type: string, isSelected: boolean) => {
-    if (isSelected) return '#4F46E5'; // Indigo brand for selected
-    switch (type.toLowerCase()) {
-      case 'person':
-        return '#059669'; // Emerald
-      case 'system':
-        return '#0284C7'; // Sky
-      case 'decision':
-        return '#D97706'; // Amber
-      case 'team':
-        return '#7C3AED'; // Violet
-      case 'concept':
-        return '#64748B'; // Slate
-      default:
-        return '#0284C7';
-    }
-  };
+  const getNodeColor = (type: string, isSelected: boolean) =>
+    isSelected ? '#9E3323' : (TYPE_COLOR[type?.toLowerCase()] || TYPE_COLOR.concept);
 
-  // Filter nodes based on active type filter
-  const filteredNodes = nodes.filter(n => {
-    if (selectedType === 'all') return true;
-    return (n.type || 'concept').toLowerCase() === selectedType;
-  });
-
+  const filteredNodes = nodes.filter(n =>
+    selectedType === 'all' ? true : (n.type || 'concept').toLowerCase() === selectedType
+  );
   const activeNodeIds = new Set(filteredNodes.map(n => n.name || n.id));
-
   const filteredLinks = links.filter(l => {
     const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
     const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
@@ -121,29 +114,16 @@ export default function RelationshipGraph({
     })),
   };
 
-  const handleZoomIn = () => {
-    if (fgRef.current) fgRef.current.zoom(fgRef.current.zoom() * 1.3, 400);
-  };
-
-  const handleZoomOut = () => {
-    if (fgRef.current) fgRef.current.zoom(fgRef.current.zoom() * 0.7, 400);
-  };
-
-  const handleFit = () => {
-    if (fgRef.current) fgRef.current.zoomToFit(400, 50);
-  };
+  const handleZoomIn = () => fgRef.current?.zoom(fgRef.current.zoom() * 1.3, 400);
+  const handleZoomOut = () => fgRef.current?.zoom(fgRef.current.zoom() * 0.7, 400);
+  const handleFit = () => fgRef.current?.zoomToFit(400, 50);
 
   const handleNodeClick = (node: any) => {
-    if (selectedEntityId === node.id) {
-      onSelectEntity?.(null);
-    } else {
-      onSelectEntity?.(node.rawNode || node);
-    }
+    if (selectedEntityId === node.id) onSelectEntity?.(null);
+    else onSelectEntity?.(node.rawNode || node);
   };
 
   const activeSelected = nodes.find(n => (n.name || n.id) === selectedEntityId);
-
-  // Find connected links for the selected node
   const connectedRelations = activeSelected ? links.filter(l => {
     const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
     const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
@@ -153,174 +133,126 @@ export default function RelationshipGraph({
 
   if (!nodes || nodes.length === 0) {
     return (
-      <div className="surface-card rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center text-xs text-slate-500">
-        No entity relationships detected in this inquiry scope.
+      <div className="sheet shadow-sheet p-8 text-center text-[13px] text-ink-faint">
+        No connections between people, systems, or decisions were found.
       </div>
     );
   }
 
   return (
-    <div className={`surface-card rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm flex flex-col transition-all ${
-      isFullscreen ? 'fixed inset-4 z-50 shadow-floating overflow-hidden' : ''
-    }`}>
-      
-      {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-100 dark:border-slate-800">
-        <div className="flex items-center space-x-2.5">
-          <div className="p-2 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 rounded-lg">
-            <Share2 className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
-              Entity Topology & Influence Graph
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Click nodes to cross-reference across timeline and citations
-            </p>
-          </div>
+    <section className={`sheet shadow-sheet p-5 flex flex-col ${isFullscreen ? 'fixed inset-4 z-50 shadow-modal' : ''}`}>
+      <header className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-rule">
+        <div>
+          <h3 className="font-serif text-[17px] font-semibold text-ink">Connections</h3>
+          <p className="text-[13px] text-ink-soft mt-0.5">Who and what links to what. Click a node to focus everything on it.</p>
         </div>
-
-        {/* Zoom & Canvas Controls */}
-        <div className="flex items-center space-x-1.5">
-          <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700">
-            <button
-              onClick={handleZoomIn}
-              className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded"
-              title="Zoom In"
-            >
+        <div className="flex items-center gap-1.5">
+          <div className="flex items-center border border-rule rounded-sheet bg-paper overflow-hidden">
+            <button onClick={handleZoomIn} className="p-1.5 text-ink-soft hover:text-ink hover:bg-sheet transition-colors" title="Zoom in">
               <ZoomIn className="w-3.5 h-3.5" />
             </button>
-            <button
-              onClick={handleZoomOut}
-              className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded"
-              title="Zoom Out"
-            >
+            <span className="w-px h-4 bg-rule" />
+            <button onClick={handleZoomOut} className="p-1.5 text-ink-soft hover:text-ink hover:bg-sheet transition-colors" title="Zoom out">
               <ZoomOut className="w-3.5 h-3.5" />
             </button>
-            <button
-              onClick={handleFit}
-              className="px-2 py-1 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded text-xs font-medium"
-              title="Fit to Center"
-            >
+            <span className="w-px h-4 bg-rule" />
+            <button onClick={handleFit} className="px-2 py-1.5 text-[12px] font-medium text-ink-soft hover:text-ink hover:bg-sheet transition-colors" title="Fit">
               Fit
             </button>
           </div>
-
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-1.5 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 transition-colors"
-            title={isFullscreen ? "Exit Fullscreen" : "Fullscreen View"}
+            className="p-1.5 text-ink-soft hover:text-ink border border-rule rounded-sheet bg-paper hover:bg-sheet transition-colors"
+            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
           >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Filter Chips Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3 pb-2.5 border-b border-slate-100 dark:border-slate-800/80 text-xs">
-        <div className="flex items-center space-x-1 overflow-x-auto py-0.5">
-          <Filter className="w-3 h-3 text-slate-400 mr-1 shrink-0" />
+      {/* Type filter */}
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-1 flex-wrap">
+          <Filter className="w-3 h-3 text-ink-faint mr-1" />
           {ENTITY_TYPES.map(type => (
             <button
               key={type}
               onClick={() => setSelectedType(type)}
-              className={`px-2.5 py-0.5 rounded-full capitalize text-[11px] font-medium transition-colors ${
+              className={`px-2.5 py-0.5 rounded-sheet capitalize text-[11.5px] font-medium transition-colors ${
                 selectedType === type
-                  ? 'bg-indigo-600 text-white shadow-2xs'
-                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-ink text-paper'
+                  : 'bg-paper border border-rule text-ink-soft hover:border-rule-strong hover:text-ink'
               }`}
             >
               {type}
             </button>
           ))}
         </div>
-
         {selectedEntityId && (
-          <button
-            onClick={() => onSelectEntity?.(null)}
-            className="flex items-center space-x-1 text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
-          >
-            <span>Reset filter</span>
-            <X className="w-3 h-3" />
+          <button onClick={() => onSelectEntity?.(null)} className="inline-flex items-center gap-1 text-[12px] text-stamp font-medium hover:underline">
+            Clear focus <X className="w-3 h-3" />
           </button>
         )}
       </div>
 
-      {/* Graph Visualizer Canvas Area */}
       <div
         ref={containerRef}
-        className={`w-full bg-slate-50 dark:bg-[#0B0F19] rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden relative transition-all ${
-          isFullscreen ? 'flex-1 min-h-[500px]' : 'h-96'
-        }`}
+        className={`w-full sheet-flush overflow-hidden relative ${isFullscreen ? 'flex-1 min-h-[500px]' : 'h-96'}`}
       >
         <ForceGraph2D
           ref={fgRef}
           width={dimensions.width}
           height={dimensions.height}
           graphData={graphData}
+          backgroundColor="rgba(0,0,0,0)"
           nodeLabel={(node: any) => `${node.name} (${node.type})\n${node.description || ''}`}
           nodeColor={(node: any) => node.color}
           nodeRelSize={6}
-          linkColor={() => '#94A3B8'}
+          linkColor={() => (isDark ? 'rgba(176,168,152,0.35)' : 'rgba(138,131,116,0.5)')}
           linkDirectionalArrowLength={4}
           linkDirectionalArrowRelPos={1}
           linkCurvature={0.12}
           linkLabel={(link: any) => link.relation || ''}
           onNodeClick={handleNodeClick}
           cooldownTicks={120}
-          onEngineStop={() => handleFit()}
+          onEngineStop={handleFit}
         />
 
-        {/* Selected Node Details Drawer */}
         {activeSelected && (
-          <div className="absolute bottom-3 left-3 right-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-4 rounded-xl border border-indigo-200 dark:border-indigo-800 shadow-floating text-xs z-20 transition-all">
+          <div className="absolute bottom-3 left-3 right-3 bg-sheet/95 backdrop-blur-sm p-4 rounded-card border border-stamp/40 shadow-lift z-20">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center space-x-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
-                <span className="font-semibold text-slate-900 dark:text-white text-sm">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-stamp shrink-0" />
+                <span className="font-serif font-semibold text-ink text-[15px] truncate">
                   {activeSelected.name || activeSelected.id}
                 </span>
-                <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                  {activeSelected.type}
-                </span>
+                <span className="catalog uppercase shrink-0">{activeSelected.type}</span>
               </div>
-              <button
-                onClick={() => onSelectEntity?.(null)}
-                className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-md"
-                title="Clear selection"
-              >
+              <button onClick={() => onSelectEntity?.(null)} className="p-1 text-ink-faint hover:text-ink rounded shrink-0" title="Clear">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {activeSelected.description && (
-              <p className="text-slate-600 dark:text-slate-300 mt-1.5 text-xs leading-relaxed">
-                {activeSelected.description}
-              </p>
+              <p className="text-[12.5px] text-ink-soft mt-1.5 leading-relaxed">{activeSelected.description}</p>
             )}
 
             {connectedRelations.length > 0 && (
-              <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center space-x-2 text-[11px] text-slate-500 flex-wrap gap-1">
-                <span className="font-medium text-slate-600 dark:text-slate-400">Connected:</span>
+              <div className="mt-2.5 pt-2 border-t border-rule flex items-center flex-wrap gap-1.5 text-[11.5px]">
+                <span className="field-label">Links</span>
                 {connectedRelations.slice(0, 4).map((rel, rIdx) => {
                   const target = rel.target === activeSelected.name ? rel.source : rel.target;
                   return (
-                    <span key={rIdx} className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-700 dark:text-slate-300">
+                    <span key={rIdx} className="font-mono text-[11px] bg-paper border border-rule px-1.5 py-0.5 rounded text-ink-soft">
                       {rel.relation} → {typeof target === 'object' ? (target as any).name : target}
                     </span>
                   );
                 })}
               </div>
             )}
-
-            <div className="mt-2 text-[11px] text-indigo-600 dark:text-indigo-400 font-medium flex items-center space-x-1">
-              <Sparkles className="w-3 h-3" />
-              <span>Cross-filtering active: Matching timeline events and source quotes highlighted</span>
-            </div>
           </div>
         )}
       </div>
-
-    </div>
+    </section>
   );
 }

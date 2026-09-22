@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Upload, 
-  FileText, 
-  Globe, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  X,
+  Upload,
+  FileText,
+  Globe,
+  CheckCircle2,
+  AlertCircle,
   Loader2,
-  FileCode,
-  FileCheck
+  FileCheck,
 } from 'lucide-react';
 import { ingestFile, ingestText, ingestUrl } from '@/lib/api';
 
@@ -31,12 +30,9 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
 
-  // Handle ESC key to dismiss
   useEffect(() => {
     if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handleKeyDown = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
@@ -52,15 +48,10 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
       const res = await ingestFile(file);
       setStatusMessage({ text: res.message });
       setFile(null);
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1200);
+      setTimeout(() => { onSuccess(); onClose(); }, 1200);
     } catch (err: any) {
-      setStatusMessage({ text: err.message || 'File ingestion failed', isError: true });
-    } finally {
-      setIsLoading(false);
-    }
+      setStatusMessage({ text: err.message || "Couldn't add that file. Check the backend is running.", isError: true });
+    } finally { setIsLoading(false); }
   };
 
   const handleTextUpload = async (e: React.FormEvent) => {
@@ -71,17 +62,11 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     try {
       const res = await ingestText(textTitle.trim(), textContent.trim());
       setStatusMessage({ text: res.message });
-      setTextTitle('');
-      setTextContent('');
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1200);
+      setTextTitle(''); setTextContent('');
+      setTimeout(() => { onSuccess(); onClose(); }, 1200);
     } catch (err: any) {
-      setStatusMessage({ text: err.message || 'Text ingestion failed', isError: true });
-    } finally {
-      setIsLoading(false);
-    }
+      setStatusMessage({ text: err.message || "Couldn't add those notes.", isError: true });
+    } finally { setIsLoading(false); }
   };
 
   const handleUrlUpload = async (e: React.FormEvent) => {
@@ -92,107 +77,66 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     try {
       const res = await ingestUrl(urlInput.trim(), urlTitle.trim() || undefined);
       setStatusMessage({ text: res.message });
-      setUrlInput('');
-      setUrlTitle('');
-      setTimeout(() => {
-        onSuccess();
-        onClose();
-      }, 1200);
+      setUrlInput(''); setUrlTitle('');
+      setTimeout(() => { onSuccess(); onClose(); }, 1200);
     } catch (err: any) {
-      setStatusMessage({ text: err.message || 'URL ingestion failed', isError: true });
-    } finally {
-      setIsLoading(false);
-    }
+      setStatusMessage({ text: err.message || "Couldn't fetch that URL.", isError: true });
+    } finally { setIsLoading(false); }
   };
+
+  const tabBtn = (active: boolean) =>
+    `flex-1 py-3 px-4 flex items-center justify-center gap-2 text-[13px] transition-colors ${
+      active
+        ? 'bg-sheet text-ink font-semibold border-b-2 border-stamp'
+        : 'text-ink-faint hover:text-ink border-b-2 border-transparent'
+    }`;
+
+  const inputCls =
+    'w-full px-3.5 py-2.5 bg-paper border border-rule rounded-sheet text-[13.5px] text-ink placeholder:text-ink-faint focus:outline-none focus:border-stamp/60 transition-colors';
+
+  const submitCls =
+    'w-full py-3 bg-ink hover:bg-ink/85 disabled:bg-rule-strong disabled:text-paper text-paper rounded-sheet text-[13px] font-semibold flex items-center justify-center gap-2 transition-colors';
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 dark:bg-black/70 backdrop-blur-xs transition-opacity"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="ingest-dialog-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-[2px]"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      role="dialog" aria-modal="true" aria-labelledby="ingest-title"
     >
-      <div className="w-full max-w-xl bg-white dark:bg-[#0F172A] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-floating overflow-hidden relative transition-all">
-        
-        {/* Modal Header */}
-        <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#090D16]/50">
+      <div className="w-full max-w-xl bg-sheet border border-rule-strong rounded-card shadow-modal overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-rule bg-paper/50">
           <div>
-            <h2 id="ingest-dialog-title" className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">
-              Ingest Context Artifact
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Index PDFs, architectural notes, design decisions, or documentation
-            </p>
+            <div className="field-label mb-0.5">Add to the archive</div>
+            <h2 id="ingest-title" className="font-serif text-[17px] font-semibold text-ink">Index a document</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            aria-label="Close dialog"
-          >
+          <button onClick={onClose} className="p-1.5 text-ink-faint hover:text-ink rounded-sheet hover:bg-sheet transition-colors" aria-label="Close">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Tab Selection */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-[#090D16] text-xs font-medium">
-          <button
-            onClick={() => setTab('file')}
-            className={`flex-1 py-3 px-4 text-center flex items-center justify-center space-x-2 transition-colors ${
-              tab === 'file'
-                ? 'bg-white dark:bg-[#0F172A] text-indigo-600 dark:text-indigo-400 font-semibold border-b-2 border-b-indigo-600'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
-            }`}
-          >
-            <Upload className="w-4 h-4" />
-            <span>Document / Image</span>
+        <div className="flex border-b border-rule bg-paper/50">
+          <button onClick={() => setTab('file')} className={tabBtn(tab === 'file')}>
+            <Upload className="w-4 h-4" /> File or image
           </button>
-          <button
-            onClick={() => setTab('text')}
-            className={`flex-1 py-3 px-4 text-center flex items-center justify-center space-x-2 transition-colors ${
-              tab === 'text'
-                ? 'bg-white dark:bg-[#0F172A] text-indigo-600 dark:text-indigo-400 font-semibold border-b-2 border-b-indigo-600'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
-            }`}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Markdown / Notes</span>
+          <button onClick={() => setTab('text')} className={tabBtn(tab === 'text')}>
+            <FileText className="w-4 h-4" /> Paste notes
           </button>
-          <button
-            onClick={() => setTab('url')}
-            className={`flex-1 py-3 px-4 text-center flex items-center justify-center space-x-2 transition-colors ${
-              tab === 'url'
-                ? 'bg-white dark:bg-[#0F172A] text-indigo-600 dark:text-indigo-400 font-semibold border-b-2 border-b-indigo-600'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'
-            }`}
-          >
-            <Globe className="w-4 h-4" />
-            <span>Web URL</span>
+          <button onClick={() => setTab('url')} className={tabBtn(tab === 'url')}>
+            <Globe className="w-4 h-4" /> From a URL
           </button>
         </div>
 
-        {/* Tab Body */}
         <div className="p-6">
-          
-          {/* File Tab */}
           {tab === 'file' && (
             <form onSubmit={handleFileUpload} className="space-y-4">
-              <div 
+              <div
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragging(false);
-                  if (e.dataTransfer.files?.[0]) setFile(e.dataTransfer.files[0]);
-                }}
-                className={`border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer relative ${
-                  isDragging 
-                    ? 'border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20' 
-                    : file 
-                      ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/20'
-                      : 'border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600 bg-slate-50/50 dark:bg-[#0B0F19]'
+                onDrop={(e) => { e.preventDefault(); setIsDragging(false); if (e.dataTransfer.files?.[0]) setFile(e.dataTransfer.files[0]); }}
+                className={`border border-dashed rounded-card p-8 text-center transition-colors cursor-pointer relative ${
+                  isDragging ? 'border-stamp bg-stamp/[0.04]'
+                    : file ? 'border-verified bg-verified/[0.05]'
+                    : 'border-rule-strong hover:border-stamp/60 bg-paper/50'
                 }`}
               >
                 <input
@@ -201,142 +145,78 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />
-
                 {file ? (
                   <div className="flex flex-col items-center">
-                    <FileCheck className="w-10 h-10 text-emerald-600 dark:text-emerald-400 mb-2" />
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-sm">
-                      {file.name}
-                    </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      {(file.size / 1024).toFixed(1)} KB • Click or drop another to replace
-                    </p>
+                    <FileCheck className="w-9 h-9 text-verified mb-2" />
+                    <p className="text-[14px] font-semibold text-ink truncate max-w-sm">{file.name}</p>
+                    <p className="catalog mt-1">{(file.size / 1024).toFixed(1)} KB · drop another to replace</p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center">
-                    <Upload className="w-10 h-10 text-slate-400 dark:text-slate-500 mb-2" />
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                      Drop PDF, architecture screenshot, or diagram here
-                    </p>
-                    <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                      Supports PDF text chunking & Gemini Vision multimodal OCR
-                    </p>
+                    <Upload className="w-9 h-9 text-ink-faint mb-2" />
+                    <p className="text-[14px] font-medium text-ink">Drop a PDF, screenshot, or diagram</p>
+                    <p className="catalog mt-1">PDFs are read as text; images are read with vision OCR</p>
                   </div>
                 )}
               </div>
-
-              <button
-                type="submit"
-                disabled={!file || isLoading}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all shadow-xs"
-              >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Upload className="w-4 h-4 text-white" />}
-                <span>{isLoading ? "Ingesting & Analyzing Entities..." : "Index Artifact"}</span>
+              <button type="submit" disabled={!file || isLoading} className={submitCls}>
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                <span>{isLoading ? 'Reading and indexing…' : 'Add to archive'}</span>
               </button>
             </form>
           )}
 
-          {/* Text Notes Tab */}
           {tab === 'text' && (
             <form onSubmit={handleTextUpload} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Document Title or Identifier
-                </label>
-                <input
-                  type="text"
-                  value={textTitle}
-                  onChange={(e) => setTextTitle(e.target.value)}
-                  placeholder="e.g. ADR-014 PostgreSQL Migration Rationale, Slack #deploy incident log"
-                  required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
+                <label className="field-label block mb-1.5">Title</label>
+                <input type="text" value={textTitle} onChange={(e) => setTextTitle(e.target.value)}
+                  placeholder="e.g. ADR-014 PostgreSQL migration, or #deploy incident log" required className={inputCls} />
               </div>
-
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Content / Markdown Notes
-                </label>
-                <textarea
-                  rows={6}
-                  value={textContent}
-                  onChange={(e) => setTextContent(e.target.value)}
-                  placeholder="Paste meeting decisions, Slack debate transcripts, architecture review notes, or RFC text here..."
-                  required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 font-sans"
-                />
+                <label className="field-label block mb-1.5">Content</label>
+                <textarea rows={6} value={textContent} onChange={(e) => setTextContent(e.target.value)}
+                  placeholder="Paste meeting decisions, a Slack transcript, review notes, or RFC text…" required className={inputCls} />
               </div>
-
-              <button
-                type="submit"
-                disabled={!textTitle.trim() || !textContent.trim() || isLoading}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all shadow-xs"
-              >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <FileText className="w-4 h-4 text-white" />}
-                <span>{isLoading ? "Extracting Entities & Decisions..." : "Index Notes"}</span>
+              <button type="submit" disabled={!textTitle.trim() || !textContent.trim() || isLoading} className={submitCls}>
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                <span>{isLoading ? 'Reading and indexing…' : 'Add to archive'}</span>
               </button>
             </form>
           )}
 
-          {/* URL Tab */}
           {tab === 'url' && (
             <form onSubmit={handleUrlUpload} className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Documentation / Wiki URL
-                </label>
-                <input
-                  type="url"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder="https://docs.company.internal/architecture/database-redesign"
-                  required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
+                <label className="field-label block mb-1.5">Page URL</label>
+                <input type="url" value={urlInput} onChange={(e) => setUrlInput(e.target.value)}
+                  placeholder="https://docs.company.internal/architecture/database-redesign" required className={inputCls} />
               </div>
-
               <div>
-                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                  Optional Title Override
-                </label>
-                <input
-                  type="text"
-                  value={urlTitle}
-                  onChange={(e) => setUrlTitle(e.target.value)}
-                  placeholder="Leave empty to use parsed HTML page title"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-[#0B0F19] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                />
+                <label className="field-label block mb-1.5">Title (optional)</label>
+                <input type="text" value={urlTitle} onChange={(e) => setUrlTitle(e.target.value)}
+                  placeholder="Leave blank to use the page's own title" className={inputCls} />
               </div>
-
-              <button
-                type="submit"
-                disabled={!urlInput.trim() || isLoading}
-                className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 text-white rounded-xl text-xs font-semibold flex items-center justify-center space-x-2 transition-all shadow-xs"
-              >
-                {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : <Globe className="w-4 h-4 text-white" />}
-                <span>{isLoading ? "Fetching & Indexing URL Content..." : "Scrape & Index URL"}</span>
+              <button type="submit" disabled={!urlInput.trim() || isLoading} className={submitCls}>
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Globe className="w-4 h-4" />}
+                <span>{isLoading ? 'Fetching and indexing…' : 'Fetch and add'}</span>
               </button>
             </form>
           )}
 
-          {/* Status Message */}
           {statusMessage && (
-            <div className={`mt-4 p-3.5 rounded-xl text-xs flex items-center space-x-2.5 ${
+            <div className={`mt-4 p-3.5 rounded-sheet text-[13px] flex items-center gap-2.5 border ${
               statusMessage.isError
-                ? 'bg-rose-50 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-900'
-                : 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-900'
+                ? 'bg-stamp/[0.06] text-stamp border-stamp/30'
+                : 'bg-verified/[0.08] text-ink border-verified/30'
             }`}>
-              {statusMessage.isError ? (
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-              ) : (
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              )}
+              {statusMessage.isError
+                ? <AlertCircle className="w-4 h-4 text-stamp shrink-0" />
+                : <CheckCircle2 className="w-4 h-4 text-verified shrink-0" />}
               <span className="font-medium">{statusMessage.text}</span>
             </div>
           )}
-
         </div>
-
       </div>
     </div>
   );

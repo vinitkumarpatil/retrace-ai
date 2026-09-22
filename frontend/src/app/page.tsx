@@ -13,24 +13,24 @@ import DocumentLibrary from '@/components/DocumentLibrary';
 import HistoryModal from '@/components/HistoryModal';
 import { queryReconstruction, listDocuments, seedSampleData } from '@/lib/api';
 import { ReconstructionResult, DocumentItem, QueryHistoryItem, EntityNode } from '@/lib/types';
-import { 
-  Compass, 
-  RotateCw, 
-  AlertCircle, 
-  Search, 
-  Layers, 
-  Sparkles, 
-  CheckCircle2, 
-  Clock, 
-  Share2, 
-  ShieldAlert, 
-  FileText, 
-  ArrowRight,
-  Filter,
-  X
+import {
+  RotateCw,
+  AlertCircle,
+  FileText,
+  Clock,
+  Share2,
+  ShieldAlert,
+  Plus,
+  X,
 } from 'lucide-react';
 
 type PerspectiveTab = 'overview' | 'timeline' | 'graph' | 'gaps' | 'evidence';
+
+const LOADING_PHASES = [
+  { label: 'Searching the documents', hint: 'Matching your question against every indexed source' },
+  { label: 'Mapping people and systems', hint: 'Linking who touched what, and when' },
+  { label: 'Writing up the finding', hint: 'Assembling the answer — and flagging what is missing' },
+];
 
 export default function DashboardPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -48,7 +48,6 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<PerspectiveTab>('overview');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Initialize theme and history from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedTheme = localStorage.getItem('retrace_theme');
@@ -56,12 +55,9 @@ export default function DashboardPage() {
         setIsDarkMode(true);
         document.documentElement.classList.add('dark');
       }
-
       const savedHistory = localStorage.getItem('retrace_query_history');
       if (savedHistory) {
-        try {
-          setHistory(JSON.parse(savedHistory));
-        } catch {}
+        try { setHistory(JSON.parse(savedHistory)); } catch {}
       }
     }
   }, []);
@@ -85,15 +81,12 @@ export default function DashboardPage() {
       const docs = await listDocuments();
       setDocuments(docs);
     } catch (e) {
-      console.warn("Could not fetch documents", e);
+      console.warn('Could not fetch documents', e);
     }
   };
 
-  useEffect(() => {
-    fetchDocs();
-  }, []);
+  useEffect(() => { fetchDocs(); }, []);
 
-  // Multi-step animated loader timer
   useEffect(() => {
     let timer1: any, timer2: any;
     if (isLoading) {
@@ -101,30 +94,24 @@ export default function DashboardPage() {
       timer1 = setTimeout(() => setLoadingStep(2), 1100);
       timer2 = setTimeout(() => setLoadingStep(3), 2400);
     }
-    return () => {
-      clearTimeout(timer1);
-      clearTimeout(timer2);
-    };
+    return () => { clearTimeout(timer1); clearTimeout(timer2); };
   }, [isLoading]);
 
   const handleSearch = async (queryText: string) => {
     setIsLoading(true);
     setErrorMessage(null);
     setCurrentQuery(queryText);
-    setSelectedEntity(null); // Reset entity filter on new inquiry
+    setSelectedEntity(null);
     try {
       const data = await queryReconstruction(queryText);
       setResult(data);
       setActiveTab('overview');
-
-      // Save to query history
       const newItem: QueryHistoryItem = {
         id: Date.now().toString(),
         query: queryText,
         timestamp: new Date().toISOString(),
         confidenceScore: data.confidence_score,
       };
-
       setHistory(prev => {
         const filtered = prev.filter(item => item.query.toLowerCase() !== queryText.toLowerCase());
         const updated = [newItem, ...filtered].slice(0, 25);
@@ -132,7 +119,7 @@ export default function DashboardPage() {
         return updated;
       });
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to reconstruct context. Please verify backend is running.');
+      setErrorMessage(err.message || "Couldn't reconstruct that. Check the backend is running on localhost:8000.");
     } finally {
       setIsLoading(false);
     }
@@ -149,10 +136,9 @@ export default function DashboardPage() {
     try {
       await seedSampleData();
       await fetchDocs();
-      // Auto run representative sample query
-      await handleSearch("Why did we migrate to PostgreSQL and change the vector index on August 12?");
+      await handleSearch('Why did we migrate to PostgreSQL and change the vector index on August 12?');
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to seed sample project records.');
+      setErrorMessage(err.message || "Couldn't load the sample case.");
     } finally {
       setIsSeeding(false);
     }
@@ -160,10 +146,16 @@ export default function DashboardPage() {
 
   const selectedEntityId = selectedEntity?.name || selectedEntity?.id || null;
 
+  const TABS: { key: PerspectiveTab; label: string; icon: any; count?: number; alert?: boolean }[] = [
+    { key: 'overview', label: 'Finding', icon: FileText },
+    { key: 'timeline', label: 'Timeline', icon: Clock, count: result?.timeline?.length || 0 },
+    { key: 'graph', label: 'Connections', icon: Share2, count: result?.graph?.nodes?.length || 0 },
+    { key: 'gaps', label: 'Gaps', icon: ShieldAlert, count: result?.missing_context?.length || 0, alert: true },
+    { key: 'evidence', label: 'Sources', icon: Share2, count: result?.citations?.length || 0 },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#F8FAFC] dark:bg-[#090D16] text-slate-900 dark:text-slate-100 transition-colors">
-      
-      {/* Navigation Header */}
+    <div className="min-h-screen flex flex-col text-ink">
       <Navbar
         onOpenIngest={() => setIsIngestOpen(true)}
         onSeedDemo={handleSeedDemo}
@@ -176,187 +168,89 @@ export default function DashboardPage() {
         historyCount={history.length}
       />
 
-      {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-7">
-        
-        {/* Top Command Console */}
-        <section>
-          <QueryConsole
-            onSearch={handleSearch}
-            isLoading={isLoading}
-            initialQuery={currentQuery}
-          />
-        </section>
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        <QueryConsole onSearch={handleSearch} isLoading={isLoading} initialQuery={currentQuery} />
 
-        {/* Error Alert */}
         {errorMessage && (
-          <div className="p-4 rounded-xl border border-rose-200 dark:border-rose-900 bg-rose-50/80 dark:bg-rose-950/40 text-xs text-rose-800 dark:text-rose-300 flex items-center space-x-2.5 shadow-xs">
-            <AlertCircle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
-            <span className="font-medium">Error: {errorMessage}</span>
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-sheet border border-stamp/40 bg-stamp/[0.06] text-[13px] text-stamp">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span className="font-medium">{errorMessage}</span>
           </div>
         )}
 
-        {/* Multi-Phase Loading State */}
+        {/* Loading — an investigation in progress */}
         {isLoading && (
-          <div className="surface-card rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-10 text-center shadow-elevated">
-            <div className="inline-flex items-center justify-center p-3.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 mb-4 animate-pulse">
-              <Compass className="w-8 h-8 animate-spin" />
-            </div>
-
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight mb-2">
-              Reconstructing Institutional Context Across Historical Artifacts
-            </h3>
-
-            {/* Stepper Pipeline */}
-            <div className="max-w-xl mx-auto my-6 grid grid-cols-3 gap-2.5 text-xs font-medium">
-              <div className={`p-3 rounded-xl border transition-all ${
-                loadingStep >= 1
-                  ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 shadow-2xs'
-                  : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
-              }`}>
-                <span className="block text-[10px] uppercase font-semibold text-slate-400 mb-0.5">Phase 01</span>
-                Vector & Keyword Search
-              </div>
-
-              <div className={`p-3 rounded-xl border transition-all ${
-                loadingStep >= 2
-                  ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 shadow-2xs'
-                  : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
-              }`}>
-                <span className="block text-[10px] uppercase font-semibold text-slate-400 mb-0.5">Phase 02</span>
-                Topology & Entity Mapping
-              </div>
-
-              <div className={`p-3 rounded-xl border transition-all ${
-                loadingStep >= 3
-                  ? 'bg-indigo-50 dark:bg-indigo-950/60 border-indigo-300 dark:border-indigo-700 text-indigo-900 dark:text-indigo-200 shadow-2xs'
-                  : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-400'
-              }`}>
-                <span className="block text-[10px] uppercase font-semibold text-slate-400 mb-0.5">Phase 03</span>
-                Synthesis & Gap Audit
-              </div>
-            </div>
-
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Correlating document chunks with zero-hallucination constraint...
-            </p>
+          <div className="sheet shadow-sheet p-8 sm:p-10">
+            <div className="field-label mb-5">Reconstructing</div>
+            <ol className="space-y-4 max-w-xl">
+              {LOADING_PHASES.map((phase, i) => {
+                const step = i + 1;
+                const state = loadingStep > step ? 'done' : loadingStep === step ? 'active' : 'pending';
+                return (
+                  <li key={i} className="flex items-start gap-3.5">
+                    <span className={`mt-0.5 grid place-items-center w-6 h-6 rounded-full border font-mono text-[11px] shrink-0 transition-colors ${
+                      state === 'done' ? 'border-verified bg-verified/10 text-verified'
+                        : state === 'active' ? 'border-stamp bg-stamp/10 text-stamp'
+                        : 'border-rule text-ink-faint'
+                    }`}>
+                      {state === 'done' ? '✓' : step}
+                    </span>
+                    <div>
+                      <p className={`text-[15px] font-medium ${state === 'pending' ? 'text-ink-faint' : 'text-ink'} ${state === 'active' ? 'flex items-center gap-2' : ''}`}>
+                        {phase.label}
+                        {state === 'active' && <span className="inline-block w-1.5 h-1.5 rounded-full bg-stamp animate-pulse" />}
+                      </p>
+                      <p className="text-[12.5px] text-ink-faint mt-0.5">{phase.hint}</p>
+                    </div>
+                  </li>
+                );
+              })}
+            </ol>
           </div>
         )}
 
-        {/* Results Workspace: Perspective Tabs + Views */}
+        {/* Results */}
         {!isLoading && result && (
           <div className="space-y-6">
-            
-            {/* Active Entity Filter Badge (if any) */}
             {selectedEntityId && (
-              <div className="flex items-center justify-between px-4 py-2.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs text-indigo-900 dark:text-indigo-200 shadow-2xs">
-                <div className="flex items-center space-x-2">
-                  <Filter className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                  <span>
-                    Focusing perspective on entity: <strong className="font-semibold">"{selectedEntityId}"</strong>
-                  </span>
-                </div>
-                <button
-                  onClick={() => setSelectedEntity(null)}
-                  className="flex items-center space-x-1 text-indigo-700 dark:text-indigo-300 font-medium hover:underline text-[11px]"
-                >
-                  <span>Clear entity focus</span>
-                  <X className="w-3 h-3" />
+              <div className="flex items-center justify-between gap-2 px-4 py-2.5 rounded-sheet border border-stamp/30 bg-stamp/[0.05] text-[13px] text-ink-soft">
+                <span>Focused on <strong className="font-semibold text-ink">{selectedEntityId}</strong> — timeline, connections, and sources are filtered to match.</span>
+                <button onClick={() => setSelectedEntity(null)} className="inline-flex items-center gap-1 text-stamp font-medium hover:underline shrink-0">
+                  Clear <X className="w-3 h-3" />
                 </button>
               </div>
             )}
 
-            {/* Perspective View Switcher */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto gap-2">
-              <div className="flex items-center space-x-1 sm:space-x-2">
-                <button
-                  onClick={() => setActiveTab('overview')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-2 transition-all ${
-                    activeTab === 'overview'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Executive Overview</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('timeline')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-2 transition-all ${
-                    activeTab === 'timeline'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Chronology</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
-                    activeTab === 'timeline' ? 'bg-indigo-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                  }`}>
-                    {result.timeline?.length || 0}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('graph')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-2 transition-all ${
-                    activeTab === 'graph'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <Share2 className="w-3.5 h-3.5" />
-                  <span>Entity Topology</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
-                    activeTab === 'graph' ? 'bg-indigo-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                  }`}>
-                    {result.graph?.nodes?.length || 0}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('gaps')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-2 transition-all ${
-                    activeTab === 'gaps'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  <span>Knowledge Gaps</span>
-                  {result.missing_context && result.missing_context.length > 0 && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-rose-500 text-white font-semibold">
-                      {result.missing_context.length}
-                    </span>
-                  )}
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('evidence')}
-                  className={`px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-2 transition-all ${
-                    activeTab === 'evidence'
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-                  }`}
-                >
-                  <Layers className="w-3.5 h-3.5" />
-                  <span>Evidence & Sources</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-semibold ${
-                    activeTab === 'evidence' ? 'bg-indigo-700 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
-                  }`}>
-                    {result.citations?.length || 0}
-                  </span>
-                </button>
-              </div>
+            {/* Folder tabs */}
+            <div className="flex items-center gap-1 border-b border-rule-strong overflow-x-auto -mb-px">
+              {TABS.map(tab => {
+                const Icon = tab.icon;
+                const active = activeTab === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`relative inline-flex items-center gap-2 px-4 py-2.5 text-[13.5px] font-medium whitespace-nowrap rounded-t-sheet border border-b-0 transition-colors ${
+                      active
+                        ? 'bg-sheet border-rule-strong text-ink'
+                        : 'bg-transparent border-transparent text-ink-faint hover:text-ink-soft'
+                    }`}
+                    style={active ? { marginBottom: '-1px' } : undefined}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                    {typeof tab.count === 'number' && tab.count > 0 && (
+                      <span className={`font-mono text-[10px] ${tab.alert ? 'text-stamp' : 'text-ink-faint'}`}>
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* TAB CONTENT */}
-
-            {/* 1. Overview Tab */}
             {activeTab === 'overview' && (
-              <div className="space-y-7">
-                {/* Executive Answer Dossier */}
+              <div className="space-y-6">
                 <NarrativeCard
                   directAnswer={result.direct_answer}
                   reasoningSummary={result.reasoning_summary}
@@ -365,30 +259,22 @@ export default function DashboardPage() {
                   query={currentQuery}
                   fullResult={result}
                 />
-
-                {/* Prominently Highlighted Knowledge Gaps (if any) */}
                 {result.missing_context && result.missing_context.length > 0 && (
                   <MissingContextCallout missingContext={result.missing_context} />
                 )}
-
-                {/* 2-Column Split: Timeline Highlights & Entity Graph Preview */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-7 items-start">
-                  <div className="lg:col-span-7 space-y-7">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                  <div className="lg:col-span-7 space-y-6">
                     <TimelineView
                       timeline={result.timeline}
                       selectedEntityId={selectedEntityId}
                       onSelectEntityName={(name) => {
                         const match = result.graph?.nodes?.find(n => (n.name || n.id).toLowerCase() === name.toLowerCase());
-                        setSelectedEntity(match || { id: name, name, type: 'person' });
+                        setSelectedEntity(name ? (match || { id: name, name, type: 'person' }) : null);
                       }}
                     />
-                    <EvidencePanel
-                      citations={result.citations}
-                      selectedEntityId={selectedEntityId}
-                    />
+                    <EvidencePanel citations={result.citations} selectedEntityId={selectedEntityId} />
                   </div>
-
-                  <div className="lg:col-span-5 sticky top-22">
+                  <div className="lg:col-span-5 lg:sticky lg:top-24">
                     <RelationshipGraph
                       nodes={result.graph?.nodes || []}
                       links={result.graph?.links || []}
@@ -400,146 +286,94 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* 2. Full Timeline Tab */}
             {activeTab === 'timeline' && (
-              <div>
-                <TimelineView
-                  timeline={result.timeline}
-                  selectedEntityId={selectedEntityId}
-                  onSelectEntityName={(name) => {
-                    const match = result.graph?.nodes?.find(n => (n.name || n.id).toLowerCase() === name.toLowerCase());
-                    setSelectedEntity(match || { id: name, name, type: 'person' });
-                  }}
-                />
-              </div>
+              <TimelineView
+                timeline={result.timeline}
+                selectedEntityId={selectedEntityId}
+                onSelectEntityName={(name) => {
+                  const match = result.graph?.nodes?.find(n => (n.name || n.id).toLowerCase() === name.toLowerCase());
+                  setSelectedEntity(name ? (match || { id: name, name, type: 'person' }) : null);
+                }}
+              />
             )}
 
-            {/* 3. Full Entity Graph Tab */}
             {activeTab === 'graph' && (
-              <div>
-                <RelationshipGraph
-                  nodes={result.graph?.nodes || []}
-                  links={result.graph?.links || []}
-                  selectedEntityId={selectedEntityId}
-                  onSelectEntity={(entity) => setSelectedEntity(entity)}
-                />
-              </div>
+              <RelationshipGraph
+                nodes={result.graph?.nodes || []}
+                links={result.graph?.links || []}
+                selectedEntityId={selectedEntityId}
+                onSelectEntity={(entity) => setSelectedEntity(entity)}
+              />
             )}
 
-            {/* 4. Knowledge Gaps Tab */}
             {activeTab === 'gaps' && (
-              <div>
+              result.missing_context && result.missing_context.length > 0 ? (
                 <MissingContextCallout missingContext={result.missing_context} />
-              </div>
+              ) : (
+                <div className="sheet shadow-sheet p-8 text-center">
+                  <p className="font-serif text-[16px] text-ink">The record is complete.</p>
+                  <p className="text-[13px] text-ink-faint mt-1">No missing reasons, people, or timeline gaps were flagged for this inquiry.</p>
+                </div>
+              )
             )}
 
-            {/* 5. Evidence & Citations Tab */}
             {activeTab === 'evidence' && (
-              <div>
-                <EvidencePanel
-                  citations={result.citations}
-                  selectedEntityId={selectedEntityId}
-                />
-              </div>
+              <EvidencePanel citations={result.citations} selectedEntityId={selectedEntityId} />
             )}
-
           </div>
         )}
 
-        {/* Empty / Initial State Onboarding Hero */}
+        {/* Empty state — a case file waiting to be opened */}
         {!isLoading && !result && (
-          <div className="surface-card rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#0F172A] p-8 sm:p-12 shadow-sm text-center max-w-4xl mx-auto my-6 transition-all">
-            
-            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-100 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mx-auto mb-5 shadow-2xs">
-              <Compass className="w-6 h-6" />
-            </div>
+          <div className="sheet shadow-lift max-w-3xl mx-auto overflow-hidden">
+            <div className="px-8 sm:px-12 pt-12 pb-10">
+              <div className="field-label mb-4">Case unopened</div>
+              <h1 className="font-serif text-[30px] sm:text-[38px] leading-[1.15] font-semibold text-ink max-w-[20ch]">
+                Recover the <span className="text-stamp">why</span> behind past decisions.
+              </h1>
+              <p className="text-[15px] text-ink-soft leading-relaxed max-w-[62ch] mt-5">
+                When the people who made a call move on, the reasoning scatters across old RFCs, Slack threads, and meeting notes. Ask a question and ReTrace pulls it back together — a plain answer, a timeline, the people involved, and every source it leaned on. Where the record is silent, it says so instead of guessing.
+              </p>
 
-            <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-medium mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-              <span>Institutional Knowledge Recovery</span>
-            </div>
-
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-              Reconstruct the "Why" Behind Past Engineering Decisions
-            </h2>
-
-            <p className="text-sm text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mt-3 leading-relaxed">
-              When key engineers depart or architectural changes unfold across unlinked Slack threads and meeting transcripts, 
-              institutional context is lost. ReTrace indexes scattered documents, generates verified chronological timelines, 
-              maps entity dependencies, and explicitly flags unrecorded gaps with zero hallucination.
-            </p>
-
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <button
-                onClick={handleSeedDemo}
-                disabled={isSeeding}
-                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 dark:disabled:bg-slate-800 text-white rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all shadow-sm"
-              >
-                <RotateCw className={`w-4 h-4 ${isSeeding ? 'animate-spin text-white' : 'text-indigo-200'}`} />
-                <span>{isSeeding ? "Loading Scenario..." : "Load Meridian Architecture Scenario"}</span>
-              </button>
-
-              <button
-                onClick={() => setIsIngestOpen(true)}
-                className="px-5 py-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center space-x-2 transition-all shadow-2xs"
-              >
-                <Layers className="w-4 h-4 text-slate-400" />
-                <span>Upload Custom Artifacts</span>
-              </button>
-            </div>
-
-            {/* Architectural Pillars */}
-            <div className="mt-10 pt-8 border-t border-slate-100 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-5 text-left text-xs">
-              <div className="p-4 bg-slate-50/70 dark:bg-[#0B0F19] rounded-xl border border-slate-200/80 dark:border-slate-800/80">
-                <span className="font-semibold text-slate-900 dark:text-white block mb-1">
-                  Hybrid Retrieval
-                </span>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Vector semantic similarity combined with precise token keyword matching for high-recall discovery.
-                </p>
-              </div>
-
-              <div className="p-4 bg-slate-50/70 dark:bg-[#0B0F19] rounded-xl border border-slate-200/80 dark:border-slate-800/80">
-                <span className="font-semibold text-slate-900 dark:text-white block mb-1">
-                  Chrono Pathing
-                </span>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Step-by-step reconstructed decision sequence directly backed by verbatim source citations.
-                </p>
-              </div>
-
-              <div className="p-4 bg-slate-50/70 dark:bg-[#0B0F19] rounded-xl border border-slate-200/80 dark:border-slate-800/80">
-                <span className="font-semibold text-slate-900 dark:text-white block mb-1">
-                  Zero Hallucination Audit
-                </span>
-                <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                  Explicitly detects unrecorded rationales, missing stakeholders, and knowledge blind spots.
-                </p>
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={handleSeedDemo}
+                  disabled={isSeeding}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-ink hover:bg-ink/85 disabled:opacity-60 text-paper rounded-sheet text-[13.5px] font-semibold transition-colors"
+                >
+                  <RotateCw className={`w-4 h-4 ${isSeeding ? 'animate-spin' : ''}`} />
+                  <span>{isSeeding ? 'Loading…' : 'Open the sample case'}</span>
+                </button>
+                <button
+                  onClick={() => setIsIngestOpen(true)}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-paper border border-rule-strong hover:bg-sheet text-ink rounded-sheet text-[13.5px] font-semibold transition-colors"
+                >
+                  <Plus className="w-4 h-4 text-ink-faint" />
+                  <span>Add your own documents</span>
+                </button>
               </div>
             </div>
 
+            {/* How it works — three facets, set as ledger rows not identical cards */}
+            <div className="border-t border-rule bg-paper/40 px-8 sm:px-12 py-7 grid grid-cols-1 sm:grid-cols-3 gap-x-8 gap-y-6">
+              {[
+                { n: '01', h: 'Finds across silos', p: 'Semantic and keyword search over every document you add, so nothing relevant gets missed.' },
+                { n: '02', h: 'Shows its work', p: 'Every claim is tied to a dated event and a verbatim source quote you can check.' },
+                { n: '03', h: 'Admits the gaps', p: 'Missing reasons, absent stakeholders, and broken timelines are flagged, never invented.' },
+              ].map(item => (
+                <div key={item.n}>
+                  <div className="font-mono text-[12px] text-stamp mb-2">{item.n}</div>
+                  <h3 className="font-serif text-[15px] font-semibold text-ink mb-1">{item.h}</h3>
+                  <p className="text-[13px] text-ink-soft leading-relaxed">{item.p}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
-
       </main>
 
-      {/* Ingestion Studio Modal */}
-      <IngestionZone
-        isOpen={isIngestOpen}
-        onClose={() => setIsIngestOpen(false)}
-        onSuccess={() => {
-          fetchDocs();
-        }}
-      />
-
-      {/* Document Library Modal */}
-      <DocumentLibrary
-        isOpen={isDocLibraryOpen}
-        onClose={() => setIsDocLibraryOpen(false)}
-        documents={documents}
-      />
-
-      {/* Query History Modal */}
+      <IngestionZone isOpen={isIngestOpen} onClose={() => setIsIngestOpen(false)} onSuccess={fetchDocs} />
+      <DocumentLibrary isOpen={isDocLibraryOpen} onClose={() => setIsDocLibraryOpen(false)} documents={documents} />
       <HistoryModal
         isOpen={isHistoryOpen}
         onClose={() => setIsHistoryOpen(false)}
@@ -548,13 +382,12 @@ export default function DashboardPage() {
         onClearHistory={handleClearHistory}
       />
 
-      {/* Clean Enterprise Footer */}
-      <footer className="border-t border-slate-200/80 dark:border-slate-800/80 bg-white/60 dark:bg-[#090D16]/60 py-4 mt-auto transition-colors">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs text-slate-400 dark:text-slate-500">
-          ReTrace AI • Institutional Context Recovery Engine
+      <footer className="border-t border-rule bg-paper/50 py-4 mt-auto">
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-between catalog">
+          <span>ReTrace · context recovery archive</span>
+          <span>every claim tied to a source</span>
         </div>
       </footer>
-
     </div>
   );
 }

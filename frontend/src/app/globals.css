@@ -1,97 +1,159 @@
+/* IBM Plex — loaded via stylesheet so the build never needs network access. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg-primary: #F8FAFC;
-  --bg-surface: #FFFFFF;
-  --bg-subtle: #F1F5F9;
-  --border-primary: #E2E8F0;
-  --border-secondary: #CBD5E1;
-  --text-primary: #0F172A;
-  --text-secondary: #475569;
-  --text-muted: #94A3B8;
-  --accent-brand: #4F46E5;
-  --accent-brand-light: #EEF2FF;
+  /* Case file — light ("desk") theme. Values are R G B triplets. */
+  --desk: 231 225 211;        /* #E7E1D3 manila desk */
+  --paper: 248 245 238;       /* #F8F5EE sheet surface */
+  --sheet: 253 251 246;       /* #FDFBF6 raised surface */
+  --ink: 35 33 27;            /* #23211B warm near-black */
+  --ink-soft: 92 87 76;       /* #5C574C secondary */
+  --ink-faint: 138 131 116;   /* #8A8374 muted */
+  --rule: 210 203 184;        /* #D2CBB8 hairline */
+  --rule-strong: 188 180 158; /* #BCB49E */
+  --stamp: 158 51 35;         /* #9E3323 oxblood forensic accent */
+  --stamp-soft: 224 205 199;  /* wash of the stamp for fills */
+  --stamp-ink: 122 38 26;     /* darker stamp for text on light */
+  --verified: 74 106 74;      /* #4A6A4A archival green */
+  --caution: 163 122 43;      /* #A37A2B ochre */
+
+  --font-sans: 'IBM Plex Sans';
+  --font-serif: 'IBM Plex Serif';
+  --font-mono: 'IBM Plex Mono';
 }
 
 .dark {
-  --bg-primary: #090D16;
-  --bg-surface: #0F172A;
-  --bg-subtle: #1E293B;
-  --border-primary: #1E293B;
-  --border-secondary: #334155;
-  --text-primary: #F8FAFC;
-  --text-secondary: #94A3B8;
-  --text-muted: #64748B;
-  --accent-brand: #818CF8;
-  --accent-brand-light: #1E1B4B;
+  /* Warm "microfilm reader" — not cold slate. */
+  --desk: 20 18 14;           /* near-black warm */
+  --paper: 26 24 19;          /* #1A1813 */
+  --sheet: 34 31 25;          /* #221F19 */
+  --ink: 235 229 216;         /* warm parchment text */
+  --ink-soft: 176 168 152;
+  --ink-faint: 122 115 101;
+  --rule: 58 53 44;
+  --rule-strong: 78 71 59;
+  --stamp: 201 92 71;         /* brightened rust for dark */
+  --stamp-soft: 60 38 32;
+  --stamp-ink: 224 138 118;
+  --verified: 138 173 133;
+  --caution: 201 165 96;
+}
+
+* {
+  border-color: rgb(var(--rule));
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  background-color: rgb(var(--desk));
+  color: rgb(var(--ink));
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   min-height: 100vh;
-  transition: background-color 0.15s ease, color 0.15s ease;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'kern', 'liga';
 }
 
-/* Elevated Enterprise Cards */
-.surface-card {
-  background-color: var(--bg-surface);
-  border: 1px solid var(--border-primary);
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.03), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+/* ---- Surfaces ------------------------------------------------------- */
+
+/* A sheet of paper on the desk. Crisp edge, faint lift, hairline rule. */
+.sheet {
+  background-color: rgb(var(--sheet));
+  border: 1px solid rgb(var(--rule));
+  border-radius: 5px;
 }
 
-.surface-card:hover {
-  border-color: var(--border-secondary);
+.sheet-flush {
+  background-color: rgb(var(--paper));
+  border: 1px solid rgb(var(--rule));
+  border-radius: 5px;
 }
 
-.dark .surface-card:hover {
-  border-color: #334155;
-  box-shadow: 0 4px 12px -1px rgba(0, 0, 0, 0.25);
+/* ---- Desk grid: engineering-pad ruling, very quiet ------------------ */
+.desk-grid {
+  background-color: rgb(var(--desk));
+  background-image:
+    linear-gradient(to right, rgb(var(--ink) / 0.035) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--ink) / 0.035) 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+.dark .desk-grid {
+  background-image:
+    linear-gradient(to right, rgb(var(--ink) / 0.045) 1px, transparent 1px),
+    linear-gradient(to bottom, rgb(var(--ink) / 0.045) 1px, transparent 1px);
 }
 
-/* Subtle enterprise grid background (refined, low opacity) */
-.subtle-grid {
-  background-image: 
-    linear-gradient(to right, rgba(148, 163, 184, 0.06) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(148, 163, 184, 0.06) 1px, transparent 1px);
-  background-size: 32px 32px;
+/* ---- Type helpers --------------------------------------------------- */
+
+/* Small catalog/record label: mono, tracked, muted. Sentence-case by default. */
+.catalog {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  color: rgb(var(--ink-faint));
 }
 
-.dark .subtle-grid {
-  background-image: 
-    linear-gradient(to right, rgba(51, 65, 85, 0.12) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(51, 65, 85, 0.12) 1px, transparent 1px);
-  background-size: 32px 32px;
+/* A field label above form inputs / meta rows. */
+.field-label {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(var(--ink-faint));
 }
 
-/* Modern minimal scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Serif prose for findings/evidence — reads like a written report. */
+.prose-finding {
+  font-family: var(--font-serif), Georgia, serif;
+  line-height: 1.65;
+  color: rgb(var(--ink));
 }
 
-::-webkit-scrollbar-track {
-  background: transparent;
+/* ---- Evidence stamp ------------------------------------------------- */
+.stamp {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgb(var(--stamp));
+  border: 1.5px solid rgb(var(--stamp) / 0.7);
+  border-radius: 3px;
+  transform: rotate(-3deg);
+  background: rgb(var(--stamp) / 0.05);
 }
 
+/* ---- Focus + selection --------------------------------------------- */
+:focus-visible {
+  outline: 2px solid rgb(var(--stamp));
+  outline-offset: 2px;
+}
+::selection {
+  background: rgb(var(--stamp) / 0.22);
+  color: rgb(var(--ink));
+}
+
+/* ---- Scrollbars ----------------------------------------------------- */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: rgb(var(--rule-strong));
   border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--ink-faint)); background-clip: content-box; }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #334155;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+/* ---- Motion: respect reduced-motion -------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
