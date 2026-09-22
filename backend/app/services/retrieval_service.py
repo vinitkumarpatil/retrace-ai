@@ -289,6 +289,40 @@ async def reconstruct_context(query: str, top_k: int = 6) -> ReconstructionRespo
                     evidence=r.get("context")
                 ))
 
+        # Enrich citations with document_id and source_type from retrieved top_chunks
+        doc_lookup = {}
+        for c in top_chunks:
+            title_clean = c.get("document_title", "").strip().lower()
+            if title_clean:
+                doc_lookup[title_clean] = (c.get("document_id"), c.get("source_type", "text"))
+
+        enriched_citations = []
+        for ci in data.get("citations", []):
+            item = CitationItem(**ci)
+            ci_title_clean = item.document_title.strip().lower()
+            if ci_title_clean in doc_lookup:
+                item.document_id, item.source_type = doc_lookup[ci_title_clean]
+            else:
+                for t_clean, (did, stype) in doc_lookup.items():
+                    if t_clean in ci_title_clean or ci_title_clean in t_clean:
+                        item.document_id = did
+                        item.source_type = stype
+                        break
+                if not item.document_id and top_chunks:
+                    item.document_id = top_chunks[0].get("document_id")
+                    item.source_type = top_chunks[0].get("source_type", "text")
+            enriched_citations.append(item)
+
+        if not enriched_citations and top_chunks:
+            for c in top_chunks[:4]:
+                enriched_citations.append(CitationItem(
+                    document_id=c.get("document_id"),
+                    document_title=c.get("document_title", "Document"),
+                    source_type=c.get("source_type", "text"),
+                    quote=c.get("chunk_text", "")[:180] + "...",
+                    relevance="Directly matched evidence chunk from historical archive."
+                ))
+
         return ReconstructionResponse(
             query=query,
             direct_answer=data.get("direct_answer", ""),
@@ -297,9 +331,10 @@ async def reconstruct_context(query: str, top_k: int = 6) -> ReconstructionRespo
             confidence_rationale=data.get("confidence_rationale", ""),
             timeline=[ExtractedEvent(**ev) for ev in data.get("timeline", [])],
             graph=GraphData(nodes=graph_nodes, links=graph_links),
-            citations=[CitationItem(**ci) for ci in data.get("citations", [])],
+            citations=enriched_citations,
             missing_context=[MissingContextItem(**mc) for mc in data.get("missing_context", [])]
         )
+
 
     except Exception as e:
         logger.error(f"Gemini context reconstruction failed: {e}. Falling back to heuristic reconstruction.")

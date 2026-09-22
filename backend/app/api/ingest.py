@@ -1,3 +1,5 @@
+import os
+import re
 import uuid
 from typing import Optional, Dict, Any, List
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
@@ -21,6 +23,10 @@ from app.services.embedding_service import generate_embeddings_batch
 from app.db import db
 
 router = APIRouter(prefix="/api/ingest", tags=["Ingestion"])
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
+UPLOADS_DIR = os.path.join(DATA_DIR, "uploads")
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 async def _persist_ingested_content(doc_data: Dict[str, Any], chunks: List[Dict[str, Any]], extracted: ExtractedDocumentData) -> str:
     """Store document, chunks with embeddings, and extracted entities in database."""
@@ -120,7 +126,7 @@ async def ingest_file_endpoint(
     file: UploadFile = File(...),
     custom_title: Optional[str] = Form(None)
 ):
-    """Upload and ingest a PDF, screenshot/image, markdown, or text document."""
+    """Upload and ingest PDF, images, video, audio, code, json, markdown, or text documents."""
     contents = await file.read()
     if not contents:
         raise HTTPException(status_code=400, detail="Uploaded file is empty.")
@@ -129,14 +135,88 @@ async def ingest_file_endpoint(
     content_type = file.content_type or ""
     lower_name = filename.lower()
 
+    # Persist raw binary to uploads directory for inline streaming/viewing
+    safe_filename = re.sub(r'[^a-zA-Z0-9_.-]', '_', filename)
+    file_id = str(uuid.uuid4())[:8]
+    stored_filename = f"{file_id}_{safe_filename}"
+    file_storage_path = os.path.join(UPLOADS_DIR, stored_filename)
+
+    with open(file_storage_path, "wb") as f:
+        f.write(contents)
+
+    metadata = {
+        "filename": filename,
+        "stored_filename": stored_filename,
+        "file_path": file_storage_path,
+        "file_size": len(contents),
+        "content_type": content_type
+    }
+
+    derived_title = custom_title or filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()
+
+    # 1. PDF
     if lower_name.endswith(".pdf") or "pdf" in content_type:
         try:
             doc_data = extract_from_pdf(contents, filename)
+            doc_data["metadata"].update(metadata)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to parse PDF: {str(e)}")
-    elif any(lower_name.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp"]) or "image" in content_type:
+
+    # 2. Images (PNG, JPG, JPEG, WEBP, GIF, SVG)
+    elif any(lower_name.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg"]) or "image" in content_type:
         mime = content_type or "image/png"
         doc_data = await extract_from_image_with_gemini(contents, filename, mime)
+        doc_data["source_type"] = "image"
+        doc_data["metadata"].update(metadata)
+
+    # 3. Video (MP4, WEBM, MOV, AVI, MKV)
+    elif any(lower_name.endswith(ext) for ext in [".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v"]) or "video" in content_type:
+        size_mb = len(contents) / (1024 * 1024)
+        raw_content = (
+            f"Video Recording Artifact: {filename}\n"
+            f"File Size: {size_mb:.2f} MB | Content-Type: {content_type or 'video/mp4'}\n"
+            f"Description: Historical video capture, product demo, or architecture review recording '{derived_title}'.\n"
+            f"Key discussion points and decisions recorded in video evidence."
+        )
+        doc_data = {
+            "title": derived_title,
+            "source_type": "video",
+            "raw_content": raw_content,
+            "metadata": metadata
+        }
+
+    # 4. Audio (MP3, WAV, M4A, OGG, FLAC, AAC)
+    elif any(lower_name.endswith(ext) for ext in [".mp3", ".wav", ".m4a", ".ogg", ".flac", ".aac"]) or "audio" in content_type:
+        size_mb = len(contents) / (1024 * 1024)
+        raw_content = (
+            f"Audio Recording Artifact: {filename}\n"
+            f"File Size: {size_mb:.2f} MB | Content-Type: {content_type or 'audio/mpeg'}\n"
+            f"Description: Historical meeting audio recording, verbal sync, or incident war-room audio '{derived_title}'.\n"
+            f"Stakeholders recorded verbal rationale and action items."
+        )
+        doc_data = {
+            "title": derived_title,
+            "source_type": "audio",
+            "raw_content": raw_content,
+            "metadata": metadata
+        }
+
+    # 5. Code & Data (JSON, Python, JS, TS, HTML, CSS, YAML, SQL)
+    elif any(lower_name.endswith(ext) for ext in [".json", ".py", ".js", ".jsx", ".ts", ".tsx", ".html", ".css", ".yaml", ".yml", ".sql", ".sh", ".toml"]):
+        try:
+            text_str = contents.decode("utf-8")
+        except UnicodeDecodeError:
+            text_str = contents.decode("latin-1")
+            
+        src_type = "json" if lower_name.endswith(".json") else "code"
+        doc_data = {
+            "title": derived_title,
+            "source_type": src_type,
+            "raw_content": text_str,
+            "metadata": metadata
+        }
+
+    # 6. Default Text / Markdown
     else:
         try:
             text_str = contents.decode("utf-8")
@@ -144,10 +224,10 @@ async def ingest_file_endpoint(
             text_str = contents.decode("latin-1")
             
         doc_data = extract_from_text(
-            title=custom_title or filename.rsplit('.', 1)[0].replace('_', ' ').title(),
+            title=derived_title,
             text=text_str,
             source_type="text",
-            metadata={"filename": filename}
+            metadata=metadata
         )
 
     if custom_title:
@@ -169,5 +249,5 @@ async def ingest_file_endpoint(
         chunk_count=len(chunks),
         extracted_entities_count=len(extracted.entities),
         extracted_events_count=len(extracted.events),
-        message=f"Successfully processed '{doc_data['title']}' with {len(extracted.entities)} entities extracted."
+        message=f"Successfully processed '{doc_data['title']}' ({doc_data['source_type'].upper()}) with {len(extracted.entities)} entities extracted."
     )

@@ -2,6 +2,16 @@ import { ReconstructionResult, DocumentItem, IngestResponse } from './types';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+export function getDocumentFileUrl(documentId: string): string {
+  return `${API_BASE}/api/documents/${documentId}/file`;
+}
+
+export async function getDocumentDetails(documentId: string): Promise<DocumentItem> {
+  const res = await fetch(`${API_BASE}/api/documents/${documentId}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`Failed to fetch document: ${res.statusText}`);
+  return res.json();
+}
+
 export async function checkHealth() {
   const res = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
   if (!res.ok) throw new Error(`Health check failed: ${res.statusText}`);

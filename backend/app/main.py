@@ -20,9 +20,12 @@ app.add_middleware(
 
 from app.api.ingest import router as ingest_router
 from app.api.query import router as query_router
+from app.api.documents import router as documents_router
 
 app.include_router(ingest_router)
 app.include_router(query_router)
+app.include_router(documents_router)
+
 
 
 

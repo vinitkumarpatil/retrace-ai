@@ -1,14 +1,16 @@
-export type SourceType = 'pdf' | 'image' | 'text' | 'url';
+export type SourceType = 'pdf' | 'image' | 'video' | 'audio' | 'text' | 'code' | 'json' | 'url' | 'other';
 
 export interface DocumentItem {
   id: string;
   title: string;
   source_type: SourceType;
   content_preview: string;
+  raw_content?: string;
   metadata?: Record<string, any>;
   created_at: string;
   entity_count?: number;
   event_count?: number;
+  file_url?: string;
 }
 
 export interface EntityNode {
@@ -50,6 +52,7 @@ export interface Citation {
   source_type: string;
   quote: string;
   relevance: string;
+  file_url?: string;
 }
 
 export interface ReconstructionResult {
@@ -76,4 +79,15 @@ export interface IngestResponse {
   extracted_entities_count: number;
   extracted_events_count: number;
   message: string;
+}
+
+export interface LocalDiscoveredFile {
+  name: string;
+  size: number;
+  type: string;
+  extension: string;
+  sourceType: SourceType;
+  handle?: FileSystemFileHandle;
+  nativeFile?: File;
+  selected: boolean;
 }

@@ -1,16 +1,18 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Upload, FileText, Globe, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Upload, FileText, Globe, CheckCircle2, AlertCircle, Loader2, HardDrive } from 'lucide-react';
 import { ingestFile, ingestText, ingestUrl } from '@/lib/api';
 
 interface IngestionZoneProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  onOpenLocalStorage?: () => void;
 }
 
-export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZoneProps) {
+export default function IngestionZone({ isOpen, onClose, onSuccess, onOpenLocalStorage }: IngestionZoneProps) {
+
   const [tab, setTab] = useState<'file' | 'text' | 'url'>('file');
   const [file, setFile] = useState<File | null>(null);
   const [textTitle, setTextTitle] = useState('');
@@ -260,6 +262,26 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
               <span>{statusMessage.text}</span>
             </div>
           )}
+
+          {onOpenLocalStorage && (
+            <div className="mt-6 pt-4 border-t border-dashed border-[#E2DDD5] flex items-center justify-between">
+              <span className="text-xs font-mono text-stone-500">
+                Want to scan an entire local folder?
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenLocalStorage();
+                }}
+                className="px-3 py-1 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded text-xs font-mono font-semibold flex items-center space-x-1.5 transition-colors shadow-2xs"
+              >
+                <HardDrive className="w-3.5 h-3.5 text-amber-700" />
+                <span>Connect Local Storage</span>
+              </button>
+            </div>
+          )}
+
 
         </div>
 

@@ -10,9 +10,11 @@ import RelationshipGraph from '@/components/RelationshipGraph';
 import EvidencePanel from '@/components/EvidencePanel';
 import IngestionZone from '@/components/IngestionZone';
 import DocumentLibrary from '@/components/DocumentLibrary';
-import { queryReconstruction, listDocuments, seedSampleData } from '@/lib/api';
-import { ReconstructionResult, DocumentItem } from '@/lib/types';
-import { Compass, RefreshCw, AlertCircle, FileSearch, Sparkles, Layers } from 'lucide-react';
+import LocalStorageConnector from '@/components/LocalStorageConnector';
+import UniversalFileViewer from '@/components/UniversalFileViewer';
+import { queryReconstruction, listDocuments, seedSampleData, getDocumentDetails, getDocumentFileUrl } from '@/lib/api';
+import { ReconstructionResult, DocumentItem, Citation } from '@/lib/types';
+import { Compass, RefreshCw, AlertCircle, FileSearch, Sparkles, Layers, HardDrive } from 'lucide-react';
 
 export default function DashboardPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -22,7 +24,18 @@ export default function DashboardPage() {
   const [isSeeding, setIsSeeding] = useState<boolean>(false);
   const [isIngestOpen, setIsIngestOpen] = useState<boolean>(false);
   const [isDocLibraryOpen, setIsDocLibraryOpen] = useState<boolean>(false);
+  const [isLocalStorageOpen, setIsLocalStorageOpen] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Universal File Viewer State
+  const [viewingDoc, setViewingDoc] = useState<{
+    id?: string;
+    title: string;
+    sourceType: string;
+    fileUrl?: string;
+    rawContent?: string;
+    quote?: string;
+  } | null>(null);
 
   const fetchDocs = async () => {
     try {
@@ -66,11 +79,42 @@ export default function DashboardPage() {
     }
   };
 
+  // Open Universal File Viewer for citations or document library items
+  const handleViewDocument = async (item: DocumentItem | Citation) => {
+    const docId = (item as any).document_id || (item as any).id;
+    const title = (item as any).document_title || (item as any).title || 'Evidence File';
+    const sourceType = item.source_type || 'text';
+    const quote = (item as any).quote;
+
+    let rawContent = (item as any).raw_content || (item as any).content_preview;
+    let fileUrl = (item as any).file_url;
+
+    if (docId) {
+      fileUrl = getDocumentFileUrl(docId);
+      try {
+        const details = await getDocumentDetails(docId);
+        rawContent = details.raw_content || rawContent;
+      } catch (err) {
+        console.warn("Could not fetch full document text:", err);
+      }
+    }
+
+    setViewingDoc({
+      id: docId,
+      title,
+      sourceType,
+      fileUrl,
+      rawContent,
+      quote,
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#FAF8F5]">
       {/* Blueprint Header */}
       <Navbar
         onOpenIngest={() => setIsIngestOpen(true)}
+        onOpenLocalStorage={() => setIsLocalStorageOpen(true)}
         onSeedDemo={handleSeedDemo}
         onOpenDocLibrary={() => setIsDocLibraryOpen(true)}
         isSeeding={isSeeding}
@@ -130,7 +174,10 @@ export default function DashboardPage() {
               {/* Left Column (7 cols): Timeline & Primary Evidence */}
               <div className="lg:col-span-7 space-y-8">
                 <TimelineView timeline={result.timeline} />
-                <EvidencePanel citations={result.citations} />
+                <EvidencePanel 
+                  citations={result.citations} 
+                  onViewDocument={handleViewDocument}
+                />
               </div>
 
               {/* Right Column (5 cols): Force-Directed Entity Graph */}
@@ -160,7 +207,7 @@ export default function DashboardPage() {
             <p className="text-xs text-stone-600 font-sans max-w-xl mx-auto mt-2 leading-relaxed">
               When engineers leave, teams reorganize, or architectural pivots happen in Slack threads, 
               the "why" behind past decisions is lost. ReTrace analyzes your scattered PDFs, meeting notes, 
-              and transcripts to reconstruct clear timelines, map entity relationships, and flag missing information.
+              recordings, and transcripts to reconstruct clear timelines, map entity relationships, and flag missing information.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -174,27 +221,35 @@ export default function DashboardPage() {
               </button>
 
               <button
+                onClick={() => setIsLocalStorageOpen(true)}
+                className="px-4 py-2 bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 rounded text-xs font-mono font-semibold flex items-center space-x-2 transition-all shadow-xs"
+              >
+                <HardDrive className="w-3.5 h-3.5 text-amber-700" />
+                <span>Connect Local Storage</span>
+              </button>
+
+              <button
                 onClick={() => setIsIngestOpen(true)}
                 className="px-4 py-2 bg-white hover:bg-stone-50 border border-[#E2DDD5] text-stone-800 rounded text-xs font-mono font-semibold flex items-center space-x-2 transition-all shadow-xs"
               >
                 <Layers className="w-3.5 h-3.5 text-stone-500" />
-                <span>Upload Custom Documents</span>
+                <span>Upload Files</span>
               </button>
             </div>
 
             {/* Feature Checklist */}
             <div className="mt-8 pt-6 border-t border-dashed border-[#E2DDD5] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left font-mono text-[11px] text-stone-600">
               <div className="p-3 bg-[#FAF8F5] rounded border border-[#E2DDD5]">
-                <strong className="text-stone-900 block mb-1">// HYBRID RETRIEVAL</strong>
-                Vector similarity search via pgvector + exact keyword token matching.
+                <strong className="text-stone-900 block mb-1">// LOCAL STORAGE CONNECT</strong>
+                Direct folder access via browser File System Access API with selective consent.
               </div>
               <div className="p-3 bg-[#FAF8F5] rounded border border-[#E2DDD5]">
-                <strong className="text-stone-900 block mb-1">// CHRONO TIMELINE</strong>
-                Step-by-step reconstructed decision path with exact document citations.
+                <strong className="text-stone-900 block mb-1">// UNIVERSAL VIEWER</strong>
+                Inline viewing for PDFs, images, videos, audio recordings, code, and transcripts.
               </div>
               <div className="p-3 bg-[#FAF8F5] rounded border border-[#E2DDD5]">
-                <strong className="text-stone-900 block mb-1">// ZERO HALLUCINATION</strong>
-                Explicitly flags unrecorded reasons, missing stakeholders, and knowledge gaps.
+                <strong className="text-stone-900 block mb-1">// FORENSIC REASONING</strong>
+                Zero hallucination timeline reconstruction with explicit missing context callouts.
               </div>
             </div>
 
@@ -203,6 +258,15 @@ export default function DashboardPage() {
 
       </main>
 
+      {/* Local Storage Connector Modal */}
+      <LocalStorageConnector
+        isOpen={isLocalStorageOpen}
+        onClose={() => setIsLocalStorageOpen(false)}
+        onIngestSuccess={() => {
+          fetchDocs();
+        }}
+      />
+
       {/* Ingestion Studio Modal */}
       <IngestionZone
         isOpen={isIngestOpen}
@@ -210,6 +274,7 @@ export default function DashboardPage() {
         onSuccess={() => {
           fetchDocs();
         }}
+        onOpenLocalStorage={() => setIsLocalStorageOpen(true)}
       />
 
       {/* Document Library Modal */}
@@ -217,12 +282,26 @@ export default function DashboardPage() {
         isOpen={isDocLibraryOpen}
         onClose={() => setIsDocLibraryOpen(false)}
         documents={documents}
+        onViewDocument={handleViewDocument}
       />
+
+      {/* Universal File Viewer Fullscreen Overlay */}
+      {viewingDoc && (
+        <UniversalFileViewer
+          documentId={viewingDoc.id}
+          title={viewingDoc.title}
+          sourceType={viewingDoc.sourceType}
+          fileUrl={viewingDoc.fileUrl}
+          rawContent={viewingDoc.rawContent}
+          quote={viewingDoc.quote}
+          onClose={() => setViewingDoc(null)}
+        />
+      )}
 
       {/* Blueprint Footer */}
       <footer className="border-t border-[#E2DDD5] bg-white/70 py-4 mt-auto">
         <div className="max-w-7xl mx-auto px-4 text-center text-xs font-mono text-stone-400">
-          RETRACE AI // ARCHITECTURAL KNOWLEDGE SYSTEM // PARCHMENT SPEC v0.1
+          RETRACE AI // ARCHITECTURAL KNOWLEDGE SYSTEM // BRANCH: VK
         </div>
       </footer>
     </div>

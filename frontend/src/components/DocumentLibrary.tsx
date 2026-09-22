@@ -1,17 +1,35 @@
 'use client';
 
 import React from 'react';
-import { X, FileText, Calendar, Database, Layers } from 'lucide-react';
+import { X, FileText, Calendar, Database, Eye, Film, Headphones, Image as ImageIcon, Code } from 'lucide-react';
 import { DocumentItem } from '@/lib/types';
 
 interface DocumentLibraryProps {
   isOpen: boolean;
   onClose: () => void;
   documents: DocumentItem[];
+  onViewDocument?: (doc: DocumentItem) => void;
 }
 
-export default function DocumentLibrary({ isOpen, onClose, documents }: DocumentLibraryProps) {
+export default function DocumentLibrary({ 
+  isOpen, 
+  onClose, 
+  documents,
+  onViewDocument 
+}: DocumentLibraryProps) {
   if (!isOpen) return null;
+
+  const getSourceIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'pdf': return <FileText className="w-4 h-4 text-rose-600" />;
+      case 'image': return <ImageIcon className="w-4 h-4 text-purple-600" />;
+      case 'video': return <Film className="w-4 h-4 text-sky-600" />;
+      case 'audio': return <Headphones className="w-4 h-4 text-emerald-600" />;
+      case 'code':
+      case 'json': return <Code className="w-4 h-4 text-amber-600" />;
+      default: return <FileText className="w-4 h-4 text-stone-500" />;
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
@@ -34,7 +52,7 @@ export default function DocumentLibrary({ isOpen, onClose, documents }: Document
         <div className="p-6 overflow-y-auto space-y-4">
           {documents.length === 0 ? (
             <p className="text-center py-8 text-xs font-mono text-stone-400">
-              NO DOCUMENTS INGESTED YET. CLICK "LOAD MERIDIAN DEMO" TO GET STARTED.
+              NO DOCUMENTS INGESTED YET. CLICK "LOAD MERIDIAN DEMO" OR "CONNECT LOCAL STORAGE" TO GET STARTED.
             </p>
           ) : (
             documents.map((doc) => (
@@ -43,15 +61,32 @@ export default function DocumentLibrary({ isOpen, onClose, documents }: Document
                 className="p-4 rounded bg-[#FAF8F5] border border-[#E2DDD5] hover:border-stone-400 transition-colors"
               >
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="w-4 h-4 text-stone-500 shrink-0" />
-                    <h3 className="text-xs font-bold text-stone-900 font-mono">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    {getSourceIcon(doc.source_type)}
+                    <h3 className="text-xs font-bold text-stone-900 font-mono truncate">
                       {doc.title}
                     </h3>
                   </div>
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700 font-semibold">
-                    {doc.source_type}
-                  </span>
+                  
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700 font-semibold">
+                      {doc.source_type}
+                    </span>
+
+                    {onViewDocument && (
+                      <button
+                        onClick={() => {
+                          onViewDocument(doc);
+                          onClose();
+                        }}
+                        className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-[#E2DDD5] hover:border-stone-400 rounded text-[11px] font-mono text-stone-800 flex items-center space-x-1 transition-all shadow-2xs"
+                        title="View file in Universal File Viewer"
+                      >
+                        <Eye className="w-3 h-3 text-amber-600" />
+                        <span>View</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <p className="text-xs text-stone-600 font-sans line-clamp-2 mb-2">

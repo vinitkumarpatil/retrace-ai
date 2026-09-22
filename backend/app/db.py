@@ -432,21 +432,44 @@ class DatabaseClient:
             ORDER BY d.created_at DESC
         """)
         rows = cursor.fetchall()
-        conn.close()
-
-        return [
-            {
+        docs = []
+        for r in rows:
+            meta = json.loads(r["metadata"] or "{}")
+            docs.append({
                 "id": r["id"],
                 "title": r["title"],
                 "source_type": r["source_type"],
                 "content_preview": r["raw_content"][:200] + "...",
-                "metadata": json.loads(r["metadata"] or "{}"),
+                "metadata": meta,
                 "created_at": r["created_at"],
                 "entity_count": r["entity_count"],
-                "event_count": r["event_count"]
-            }
-            for r in rows
-        ]
+                "event_count": r["event_count"],
+                "file_url": f"/api/documents/{r['id']}/file" if meta.get("file_path") else None
+            })
+        return docs
+
+    async def get_document_by_id(self, document_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve complete document record by ID."""
+        conn = self._get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM documents WHERE id = ?", (document_id,))
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return None
+
+        meta = json.loads(row["metadata"] or "{}")
+        return {
+            "id": row["id"],
+            "title": row["title"],
+            "source_type": row["source_type"],
+            "raw_content": row["raw_content"],
+            "metadata": meta,
+            "created_at": row["created_at"],
+            "file_url": f"/api/documents/{row['id']}/file" if meta.get("file_path") else None
+        }
+
 
     async def get_all_entities_and_relationships(self, document_ids: Optional[List[str]] = None) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         conn = self._get_sqlite_conn()

@@ -1,17 +1,40 @@
 'use client';
 
 import React from 'react';
-import { FileText, ExternalLink, Quote, Layers, CheckCircle } from 'lucide-react';
+import { 
+  FileText, 
+  ExternalLink, 
+  Quote, 
+  Layers, 
+  Eye, 
+  Film, 
+  Headphones, 
+  Image as ImageIcon, 
+  Code 
+} from 'lucide-react';
 import { Citation } from '@/lib/types';
 
 interface EvidencePanelProps {
   citations: Citation[];
+  onViewDocument?: (citation: Citation) => void;
 }
 
-export default function EvidencePanel({ citations }: EvidencePanelProps) {
+export default function EvidencePanel({ citations, onViewDocument }: EvidencePanelProps) {
   if (!citations || citations.length === 0) {
     return null;
   }
+
+  const getSourceIcon = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'pdf': return <FileText className="w-3.5 h-3.5 text-rose-600" />;
+      case 'image': return <ImageIcon className="w-3.5 h-3.5 text-purple-600" />;
+      case 'video': return <Film className="w-3.5 h-3.5 text-sky-600" />;
+      case 'audio': return <Headphones className="w-3.5 h-3.5 text-emerald-600" />;
+      case 'code':
+      case 'json': return <Code className="w-3.5 h-3.5 text-amber-600" />;
+      default: return <FileText className="w-3.5 h-3.5 text-stone-500" />;
+    }
+  };
 
   const getSourceBadge = (type: string) => {
     switch (type.toLowerCase()) {
@@ -19,10 +42,17 @@ export default function EvidencePanel({ citations }: EvidencePanelProps) {
         return 'bg-rose-50 text-rose-700 border-rose-200';
       case 'image':
         return 'bg-purple-50 text-purple-700 border-purple-200';
-      case 'url':
+      case 'video':
         return 'bg-sky-50 text-sky-700 border-sky-200';
-      default:
+      case 'audio':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+      case 'code':
+      case 'json':
         return 'bg-amber-50 text-amber-700 border-amber-200';
+      case 'url':
+        return 'bg-blue-50 text-blue-700 border-blue-200';
+      default:
+        return 'bg-stone-50 text-stone-700 border-stone-200';
     }
   };
 
@@ -40,7 +70,7 @@ export default function EvidencePanel({ citations }: EvidencePanelProps) {
               PRIMARY EVIDENCE & SOURCE CITATIONS
             </h3>
             <p className="text-[11px] font-mono text-stone-500">
-              ORIGINAL DOCUMENTS BACKING EVERY EXTRACTED CLAIM
+              ORIGINAL DOCUMENTS & MEDIA BACKING EVERY EXTRACTED CLAIM
             </p>
           </div>
         </div>
@@ -60,16 +90,31 @@ export default function EvidencePanel({ citations }: EvidencePanelProps) {
               key={idx}
               className="p-3.5 rounded bg-[#FAF8F5] border border-[#E2DDD5] hover:border-stone-400 transition-colors"
             >
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <div className="flex items-center space-x-2">
-                  <FileText className="w-4 h-4 text-stone-500 shrink-0" />
-                  <span className="text-xs font-bold text-stone-900 font-mono">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
+                <div className="flex items-center space-x-2 min-w-0">
+                  {getSourceIcon(citation.source_type)}
+                  <span className="text-xs font-bold text-stone-900 font-mono truncate">
                     {citation.document_title}
                   </span>
                 </div>
-                <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border font-semibold ${badgeClass}`}>
-                  {citation.source_type}
-                </span>
+
+                <div className="flex items-center space-x-2">
+                  <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded border font-semibold ${badgeClass}`}>
+                    {citation.source_type}
+                  </span>
+
+                  {onViewDocument && (
+                    <button
+                      type="button"
+                      onClick={() => onViewDocument(citation)}
+                      className="px-2.5 py-1 bg-white hover:bg-stone-100 border border-[#E2DDD5] hover:border-stone-400 rounded text-[11px] font-mono text-stone-800 flex items-center space-x-1 transition-all shadow-2xs"
+                      title="Inspect full source file in Universal File Viewer"
+                    >
+                      <Eye className="w-3 h-3 text-amber-600" />
+                      <span>View File</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Relevance Note */}

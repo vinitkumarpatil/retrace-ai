@@ -1,10 +1,11 @@
 'use client';
 
 import React from 'react';
-import { Compass, Database, Sparkles, UploadCloud, RefreshCw, FileText } from 'lucide-react';
+import { Compass, Database, Sparkles, UploadCloud, RefreshCw, FileText, HardDrive } from 'lucide-react';
 
 interface NavbarProps {
   onOpenIngest: () => void;
+  onOpenLocalStorage: () => void;
   onSeedDemo: () => void;
   onOpenDocLibrary: () => void;
   isSeeding: boolean;
@@ -13,6 +14,7 @@ interface NavbarProps {
 
 export default function Navbar({
   onOpenIngest,
+  onOpenLocalStorage,
   onSeedDemo,
   onOpenDocLibrary,
   isSeeding,
@@ -66,7 +68,8 @@ export default function Navbar({
             title="Inspect Ingested Documents"
           >
             <FileText className="w-3.5 h-3.5 text-stone-500" />
-            <span>Documents ({docCount})</span>
+            <span className="hidden sm:inline">Documents</span>
+            <span>({docCount})</span>
           </button>
 
           <button
@@ -76,7 +79,18 @@ export default function Navbar({
             title="Load Project Meridian sample decision archive"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSeeding ? 'animate-spin text-amber-600' : 'text-amber-500'}`} />
-            <span>{isSeeding ? 'Seeding...' : 'Load Meridian Demo'}</span>
+            <span className="hidden sm:inline">{isSeeding ? 'Seeding...' : 'Load Meridian Demo'}</span>
+            <span className="sm:hidden">Demo</span>
+          </button>
+
+          {/* Connect Local Storage Button */}
+          <button
+            onClick={onOpenLocalStorage}
+            className="px-3 py-1.5 text-xs font-mono font-medium text-stone-800 bg-white hover:bg-amber-50/70 border border-amber-300 hover:border-amber-400 rounded flex items-center space-x-1.5 transition-colors shadow-xs"
+            title="Connect local folder via File System Access API"
+          >
+            <HardDrive className="w-3.5 h-3.5 text-amber-600" />
+            <span>Connect Local Storage</span>
           </button>
 
           <button
@@ -84,7 +98,7 @@ export default function Navbar({
             className="px-3.5 py-1.5 text-xs font-mono font-medium text-white bg-[#1E293B] hover:bg-stone-800 rounded flex items-center space-x-1.5 transition-colors shadow-xs"
           >
             <UploadCloud className="w-3.5 h-3.5 text-amber-300" />
-            <span>Ingest Document</span>
+            <span>Ingest</span>
           </button>
         </div>
 

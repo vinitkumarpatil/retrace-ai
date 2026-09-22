@@ -234,15 +234,25 @@ async def extract_from_image_with_gemini(image_bytes: bytes, filename: str, mime
     try:
         from google import genai
         from google.genai import types
-        client = genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[
-                prompt,
-                types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
-            ]
-        )
-        content = response.text or ""
+        models_to_try = ["models/gemini-3.6-flash", "models/gemini-3.5-flash-lite", "gemini-3.6-flash"]
+        content = ""
+        last_v_err = None
+        for v_model in models_to_try:
+            try:
+                response = client.models.generate_content(
+                    model=v_model,
+                    contents=[
+                        prompt,
+                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type)
+                    ]
+                )
+                content = response.text or ""
+                break
+            except Exception as v_err:
+                last_v_err = v_err
+                continue
+        if not content and last_v_err:
+            raise last_v_err
         return {
             "title": doc_title,
             "source_type": "image",
