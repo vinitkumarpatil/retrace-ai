@@ -73,10 +73,10 @@ export default function Navbar({
             onClick={onSeedDemo}
             disabled={isSeeding}
             className="px-3 py-1.5 text-xs font-mono text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded flex items-center space-x-1.5 transition-colors shadow-xs"
-            title="Load Project Meridian sample decision archive"
+            title="Load Project Phoenix sample decision archive"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSeeding ? 'animate-spin text-amber-600' : 'text-amber-500'}`} />
-            <span>{isSeeding ? 'Seeding...' : 'Load Meridian Demo'}</span>
+            <span>{isSeeding ? 'Seeding...' : 'Load Phoenix Demo'}</span>
           </button>
 
           <button

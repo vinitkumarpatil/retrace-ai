@@ -1,238 +1,387 @@
-# ReTrace — AI-Powered Lost Context Recovery Tool
+# ReTrace — AI-Powered Context Reconstruction System
 
 [![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Google Gemini](https://img.shields.io/badge/Google_Gemini-3.6_Flash-4285F4?style=flat&logo=google)](https://deepmind.google/technologies/gemini/)
-[![pgvector](https://img.shields.io/badge/Supabase-pgvector-3ECF8E?style=flat&logo=supabase)](https://supabase.com/)
+[![Google Gemini](https://img.shields.io/badge/Google_Gemini-Flash-4285F4?style=flat&logo=google)](https://deepmind.google/technologies/gemini/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**ReTrace** reconstructs the missing architectural context and rationale behind past engineering and product decisions. By ingesting scattered documentation (RFCs, Slack transcripts, meeting minutes, incident postmortems, and architecture diagrams), ReTrace utilizes Google Gemini and hybrid vector retrieval to answer *"what happened, why was it decided, who authorized it, and what context was never recorded."*
+**ReTrace** does not merely search for information. It reconstructs the context connecting fragmented information and explicitly identifies where that context is missing.
+
+When engineers leave, teams reorganize, or architectural pivots happen in Slack threads, the "why" behind past decisions is lost. ReTrace analyzes your scattered PDFs, meeting notes, and transcripts to reconstruct clear timelines, map entity relationships, and flag missing information.
 
 ---
 
-## 🏛 Architectural Blueprint Aesthetic
+## Problem
 
-Designed around an architectural drafting aesthetic:
-- **Parchment Canvas**: Cream drafting background (`#FAF8F5`) with technical grid coordinate patterns.
-- **Drafting Accents**: Muted ochre (`#D97706`), sage green (`#059669`), slate blueprint navy (`#1E293B`), and terracotta rust (`#DC2626`) for forensic warnings.
-- **Strict Evidence Transparency**: Zero hallucination policy — every claim is backed by direct quotes and exact source citations. Any missing rationale is prominently flagged in a dedicated **Missing Context** banner.
+Teams lose critical context when:
+- Engineers leave and institutional knowledge walks out the door
+- Decisions are made in Slack threads that get buried
+- Meeting notes are scattered across different tools
+- Architecture decisions lack documented rationale
+- Incident postmortems don't connect to root causes
+
+## Solution
+
+ReTrace reconstructs lost context by:
+1. Ingesting scattered documentation from multiple sources
+2. Extracting entities, relationships, events, and decisions
+3. Building a searchable knowledge graph
+4. Answering natural language questions with full source traceability
+5. Explicitly identifying where context is missing
 
 ---
 
-## ⚡ System Architecture
+## Architecture
 
-```mermaid
-flowchart TD
-    subgraph Ingestion["1. Multi-Modal Ingestion"]
-        A1[PDF Documents / ADRs] --> B[Ingestion Service]
-        A2[Screenshots / Diagrams] --> B
-        A3[Meeting Notes / Slack Dumps] --> B
-        A4[Webpages / Wiki URLs] --> B
-    end
-
-    subgraph Extraction["2. Forensic Knowledge Extraction"]
-        B --> C[Gemini 3.6 Flash]
-        C --> D1[Entities: People, Systems, Teams]
-        C --> D2[Decisions & Rationale]
-        C --> D3[Timeline Milestones]
-        C --> D4[Relationship Links]
-        C --> D5[Semantic Text Chunks]
-    end
-
-    subgraph Storage["3. Dual-Mode Storage & Vectors"]
-        D5 --> E[Gemini Embedding 001]
-        E --> F[Supabase pgvector / SQLite NumPy Vector Store]
-        D1 & D2 & D3 & D4 --> F
-    end
-
-    subgraph Retrieval["4. Hybrid Retrieval & Reconstruction"]
-        Q[User Natural Language Query] --> H[Hybrid Fusion Engine]
-        H -->|Vector Cosine Similarity| F
-        H -->|Keyword Token Match| F
-        H --> R[Gemini Synthesis Reasoning Engine]
-        R --> RES[Reconstructed Narrative]
-    end
-
-    subgraph Presentation["5. Blueprint Dashboard UI"]
-        RES --> UI1[Executive Narrative Answer]
-        RES --> UI2[Stepped Chronological Timeline]
-        RES --> UI3[Interactive Force-Directed Entity Graph]
-        RES --> UI4[Missing Context Callout Banner]
-        RES --> UI5[Source Citation Cards]
-    end
+```text
+                    USER
+                     |
+          +----------+----------+
+          |                     |
+     Local Files             Browser Tabs
+      / Folders              / Pages
+          |                     |
+          +----------+----------+
+                     v
+              CONTEXT CAPTURE
+                     v
+              SOURCE LEDGER
+                     v
+             CONTENT STORAGE
+                     v
+             INDEXING ENGINE
+                     v
+       +-------------+-------------+
+       v             v             v
+    Keyword        Vector       Metadata
+    Search         Search        Search
+       +-------------+-------------+
+                     v
+              HYBRID RANKING
+                     v
+              RANKED EVIDENCE
+                     v
+              WORK ENGINE
+                     |
+             +-------+-------+
+             v               v
+       Backend Logic       Gemini
+             |               |
+             +-------+-------+
+                     v
+           CONTEXT RECONSTRUCTION
+                     v
+       +--------+--------+--------+-------------+
+       v        v        v        v             v
+     Answer   Timeline Evidence Graph   Missing Context
+                                           +
+                                        Confidence
 ```
 
 ---
 
-## 🚀 Tech Stack
+## Input Sources
 
-- **Frontend**: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS, Lucide Icons
-- **Graph Visualizer**: `react-force-graph-2d` (Client-side HTML5 Canvas force-directed topology)
-- **Backend**: Python 3.10+, FastAPI, Pydantic v2, Uvicorn
-- **AI & LLM**: Google Gemini API (`models/gemini-3.6-flash` for extraction & reasoning, `models/gemini-embedding-001` for 768-dim embeddings)
-- **Database & Vectors**: 
-  - **Live Mode**: Supabase PostgreSQL with `pgvector` HNSW vector indexing
-  - **Zero-Config Local Mode**: Embedded SQLite + NumPy cosine similarity engine for instant offline execution
-- **Document Parsers**: PyPDF (PDF text), BeautifulSoup4 & HTTPX (Web scraping), Gemini Vision (Image OCR & diagram parsing)
+### Local Files
+- PDF documents
+- Text files and Markdown
+- JSON and CSV data
+- Source code files
+- DOC/DOCX (via text extraction)
 
----
+### Browser Tabs (Chrome Extension)
+- Web pages and articles
+- GitHub discussions
+- Wiki pages
+- Documentation sites
+- Slack/Teams messages (via copy-paste)
 
-## 📁 Repository Structure
-
-```
-retrace-ai/
-├── backend/
-│   ├── app/
-│   │   ├── main.py              # FastAPI application & CORS configuration
-│   │   ├── config.py            # Environment settings & validation
-│   │   ├── db.py                # Dual-mode Supabase / SQLite storage layer
-│   │   ├── models.py            # Pydantic schemas for entities and responses
-│   │   ├── api/
-│   │   │   ├── ingest.py        # /api/ingest endpoints (file, text, url)
-│   │   │   └── query.py         # /api/query & /api/context endpoints
-│   │   └── services/
-│   │       ├── extractor.py     # Multi-format document parser & chunker
-│   │       ├── gemini_service.py# Structured entity/event extraction
-│   │       ├── embedding_service.py # Gemini 768-dim embeddings
-│   │       └── retrieval_service.py # Hybrid search & context synthesis
-│   ├── tests/
-│   │   └── test_integration.py  # End-to-end integration test suite
-│   ├── schema.sql               # Supabase PostgreSQL + pgvector schema
-│   ├── requirements.txt
-│   ├── .env.example
-│   └── run.py
-├── frontend/
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx         # Main interactive dashboard
-│   │   │   ├── layout.tsx
-│   │   │   └── globals.css      # Architectural drafting styles & grid
-│   │   ├── components/
-│   │   │   ├── Navbar.tsx
-│   │   │   ├── QueryConsole.tsx
-│   │   │   ├── NarrativeCard.tsx
-│   │   │   ├── MissingContextCallout.tsx
-│   │   │   ├── TimelineView.tsx
-│   │   │   ├── RelationshipGraph.tsx
-│   │   │   ├── EvidencePanel.tsx
-│   │   │   ├── IngestionZone.tsx
-│   │   │   └── DocumentLibrary.tsx
-│   │   └── lib/
-│   │       ├── api.ts          # Backend API client
-│   │       └── types.ts        # TypeScript contracts
-│   ├── package.json
-│   ├── tailwind.config.ts
-│   └── .env.example
-├── README.md
-└── .gitignore
-```
+### Demo Data
+- Project Phoenix: Architecture Migration scenario
+- 4 interconnected documents demonstrating cross-source reconstruction
 
 ---
 
-## 🛠 Quick Start Setup
+## Search Engine
+
+### Keyword Search
+Matches tokens across document chunks, scoring by keyword proportion.
+
+### Vector Search
+Uses NumPy cosine similarity over 768-dim embeddings (Gemini embedding-001 or deterministic fallback).
+
+### Metadata Filter
+Filter by project, source type, date, domain, entity, or topic.
+
+### Hybrid Ranking
+Combines vector similarity (60%) and keyword match (40%) using reciprocal rank fusion.
+
+---
+
+## Work Engine
+
+The Work Engine separates deterministic backend processing from Gemini reasoning:
+
+### Backend-Only Operations
+- Simple search queries ("Show files mentioning X")
+- Document listing and filtering
+- Metadata filtering
+- Content hash deduplication
+- Cache lookup/storage
+- Timeline sorting
+- Confidence calculation
+- Graph retrieval
+
+### Gemini Operations
+- Complex reasoning queries ("Why did we change the architecture?")
+- Entity extraction during ingestion
+- Image OCR
+
+### Query Classification
+```
+USER QUERY
+    v
+QUERY CLASSIFICATION
+    v
+Can deterministic backend answer?
+    |
+    +-- YES --> backend-only (no Gemini token cost)
+    |
+    +-- NO
+         v
+    retrieve evidence
+         v
+    minimize evidence
+         v
+    Gemini reasoning
+```
+
+---
+
+## Context Reconstruction
+
+Given a question and relevant evidence, ReTrace produces:
+
+- **Answer**: Clear, direct response backed by evidence
+- **Timeline**: Chronological sequence of events
+- **Evidence**: Source-traceable citations with paths and URLs
+- **Graph**: Entity relationships and connections
+- **Missing Context**: Query-specific gaps in available information
+- **Confidence**: Deterministic score based on evidence quality
+
+### Missing Context Detection
+ReTrace distinguishes between:
+- **Documented fact**: Directly supported by evidence
+- **Inference**: Reasonably inferred from multiple sources
+- **Unknown**: Not supported by available evidence
+
+Example: If the evidence shows an incident followed by an architecture discussion, ReTrace does NOT automatically claim "the incident caused the change." Instead: "The incident and architecture discussion are connected across the available sources, but the documents do not explicitly establish that the incident alone caused the decision."
+
+---
+
+## Chrome Extension
+
+### Installation
+1. Open `chrome://extensions/`
+2. Enable "Developer mode"
+3. Click "Load unpacked"
+4. Select the `extension/` directory
+
+### Usage
+1. Navigate to any web page
+2. Click the ReTrace icon
+3. Preview the page content
+4. Choose a project
+5. Click **Save Context** or **Save + Ask**
+
+---
+
+## Setup
 
 ### Prerequisites
-- Node.js 18+ & npm
+- Node.js 18+
 - Python 3.10+
-- Google Gemini API Key ([Get one here](https://aistudio.google.com/))
+- (Optional) Google Gemini API Key
 
-### 1. Backend Setup
+### Backend
 
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv .venv
-
-# Activate virtual environment
-# On Windows:
+# Windows:
 .\.venv\Scripts\activate
-# On Linux/macOS:
+# Linux/macOS:
 source .venv/bin/activate
 
-# Install dependencies
 pip install -r requirements.txt
-
-# Configure environment variables
 cp .env.example .env
+# Edit .env with your settings
+python run.py
 ```
 
-Edit `backend/.env`:
+### Frontend
+
+```bash
+cd frontend
+npm install
+cp .env.example .env
+npm run dev
+```
+
+### Chrome Extension
+
+```bash
+# Load extension/ directory in chrome://extensions/
+```
+
+---
+
+## API Endpoints
+
+### Ingestion
+- `POST /api/ingest/text` - Ingest raw text/notes
+- `POST /api/ingest/url` - Scrape and ingest a URL
+- `POST /api/ingest/file` - Upload and ingest a file
+- `POST /api/ingest/browser` - Ingest browser context
+
+### Query
+- `POST /api/query` - Reconstruct context for a question
+- `GET /api/search` - Backend-only search with source traceability
+
+### Context
+- `GET /api/context/documents` - List all documents (supports project filter)
+- `GET /api/context/documents/{doc_id}` - Get single document
+- `GET /api/context/graph` - Get entity relationship graph
+- `POST /api/context/seed` - Seed Project Phoenix demo data
+
+### Health
+- `GET /api/health` - Check system status
+
+---
+
+## Demo Questions
+
+### Simple (Backend-Only)
+> "Show documents related to Architecture B."
+
+Expected: Backend-only search, no Gemini tokens used.
+
+### Decision
+> "Why did we change the architecture?"
+
+Expected: Cross-source reconstruction with timeline and evidence.
+
+### Cross-Source
+> "What evidence connects the payment outage to the decision to move to Architecture B?"
+
+Expected: Multiple source citations with explicit evidence vs inference distinction.
+
+### Attribution
+> "Who approved Architecture B?"
+
+Expected: Evidence-backed answer or explicit missing-context result.
+
+### Missing Context
+> "What context is missing from this decision?"
+
+Expected: Query-specific missing-context analysis.
+
+---
+
+## Testing
+
+### Critical Tests
+```bash
+cd backend
+python -m pytest tests/test_critical.py -v
+```
+Expected: 16/16 passed
+
+### Demo Verification
+```bash
+cd backend
+python verify_demo.py
+```
+Expected: 22/22 passed, FINAL: DEMO READY
+
+---
+
+## Project Structure
+
+```
+retrace-ai/
++-- backend/
+|   +-- app/
+|   |   +-- main.py              # FastAPI application
+|   |   +-- config.py            # Environment settings
+|   |   +-- db.py                # Dual-mode storage layer
+|   |   +-- models.py            # Pydantic schemas
+|   |   +-- api/
+|   |   |   +-- ingest.py        # Ingestion endpoints
+|   |   |   +-- query.py         # Query & context endpoints
+|   |   +-- services/
+|   |       +-- extractor.py     # Document parser & chunker
+|   |       +-- gemini_service.py # AI extraction
+|   |       +-- embedding_service.py # Vector embeddings
+|   |       +-- retrieval_service.py # Hybrid search
+|   |       +-- work_engine.py   # Deterministic processing
+|   +-- tests/
+|   +-- verify_demo.py           # 22-point demo verification
+|   +-- requirements.txt
+|   +-- .env.example
++-- frontend/
+|   +-- src/
+|   |   +-- app/page.tsx         # Main dashboard
+|   |   +-- components/          # 9 React components
+|   |   +-- lib/api.ts           # API client
+|   |   +-- lib/types.ts         # TypeScript types
+|   +-- package.json
++-- extension/                   # Chrome Extension (Manifest V3)
+|   +-- manifest.json
+|   +-- popup.html
+|   +-- popup.js
+|   +-- content.js
+|   +-- background.js
++-- docs/
+|   +-- architecture.md
+|   +-- verified-capabilities.md
++-- README.md
+```
+
+---
+
+## Security & Privacy
+
+- **Explicit Capture Only**: Chrome extension only captures when you click Save
+- **No Silent Collection**: Does not collect browsing history
+- **Local Storage**: Data stored locally in SQLite by default
+- **API Keys**: Environment variables excluded via .gitignore
+- **No Hallucination**: Explicitly flags missing context rather than inventing facts
+
+---
+
+## Environment Variables
+
+### Backend (.env)
 ```env
-GEMINI_API_KEY=your_gemini_api_key_here
+GEMINI_API_KEY=your_key_here     # Optional for AI features
 HOST=127.0.0.1
 PORT=8000
 ENVIRONMENT=development
-CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+CORS_ORIGINS=http://localhost:3000
 
-# (Optional) Supabase Credentials
-# If left empty, ReTrace seamlessly uses local SQLite + NumPy vector search
+# Optional Supabase (falls back to SQLite)
 SUPABASE_URL=
 SUPABASE_KEY=
 ```
 
-Start the backend server:
-```bash
-python run.py
-# API runs at http://127.0.0.1:8000
-# Interactive Swagger docs at http://127.0.0.1:8000/docs
-```
-
-### 2. Frontend Setup
-
-```bash
-cd ../frontend
-
-# Install dependencies
-npm install
-
-# Configure environment
-cp .env.example .env
-
-# Run development server
-npm run dev
-# Frontend runs at http://localhost:3000
+### Frontend (.env)
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ---
 
-## 🧪 Testing the Application
+## License
 
-### Option A: One-Click Demo Load
-1. Open `http://localhost:3000` in your browser.
-2. Click **"Load Meridian Demo"** in the top navigation or hero banner.
-3. This seeds **"Project Meridian: The Architecture Pivot"** (an RFC, an emergency Slack incident thread, and a retrospective).
-4. ReTrace will automatically execute a forensic recovery query:
-   > *"Why did we switch to PostgreSQL and change the vector index on August 12?"*
-5. Inspect the reconstructed **Narrative**, **Stepped Timeline**, **Interactive Entity Graph**, and **Missing Context Flags**.
-
-### Option B: Run Automated Integration Tests
-```bash
-cd backend
-.\.venv\Scripts\python.exe tests/test_integration.py
-```
-
----
-
-## 🗄 Optional: Supabase & pgvector Setup
-
-To run ReTrace directly against Supabase PostgreSQL:
-1. Create a project at [supabase.com](https://supabase.com).
-2. Open the **SQL Editor** in Supabase and paste the contents of [`backend/schema.sql`](backend/schema.sql).
-3. Copy your project URL and service role key into `backend/.env`:
-   ```env
-   SUPABASE_URL=https://your-project.supabase.co
-   SUPABASE_KEY=your_supabase_key
-   ```
-4. Restart the backend server. ReTrace will automatically detect Supabase and run vector queries via the `match_chunks` RPC function.
-
----
-
-## 🛡 Security & Privacy
-- **API Keys**: All API keys and environment files are strictly excluded via `.gitignore`.
-- **Zero Hallucination Guarantee**: When historical records lack specific details, ReTrace refuses to fabricate rationale and explicitly lists them as unrecovered items in the Missing Context panel.
-
----
-
-## 📄 License
-MIT License. Created with Google Gemini & Antigravity.
+MIT License

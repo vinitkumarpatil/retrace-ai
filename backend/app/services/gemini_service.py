@@ -85,11 +85,57 @@ def _heuristic_rule_based_extraction(title: str, text: str) -> ExtractedDocument
         text,
         re.IGNORECASE
     )
-    
-    # Detect potential person / actor names (e.g., @mentions or capitalized titles)
-    actor_matches = list(set(re.findall(r'@([A-Za-z0-9_]+)|\b([A-Z][a-z]+ [A-Z][a-z]+)\b', text)))
-    actors = [m[0] or m[1] for m in actor_matches if m[0] or m[1]][:6]
-    
+
+    # Detect @mentions (always valid person references)
+    mention_matches = list(set(re.findall(r'@([A-Za-z0-9_]+)', text)))
+
+    # Detect capitalized name patterns, but filter false positives
+    raw_name_matches = re.findall(r'\b([A-Z][a-z]+ [A-Z][a-z]+)\b', text)
+
+    # Known false positive patterns (section headers, common phrases)
+    false_positives = {
+        "Problem Statement", "Action Items", "Next Steps", "Conclusion",
+        "Requirements", "Background", "Context", "Summary", "Overview",
+        "Agenda", "Attendees", "Participants", "Notes", "Minutes",
+        "Discussion", "Recommendation", "Decision", "Status", "Timeline",
+        "Alternatives Considered", "Rejected Alternatives", "Root Cause",
+        "Lessons Learned", "Risk Assessment", "Mitigation Strategy",
+        "Budget Resources", "Scope Objectives", "Success Criteria",
+        "Phase Stage", "Task Item", "Point Note", "Remark Comment",
+        "Feedback Suggestion", "Proposal Guideline", "Policy Procedure",
+        "Process Protocol", "Standard Specification", "Definition Description",
+        "Explanation Analysis", "Evaluation Review", "Report Section",
+        "Architecture Board", "Board Meeting", "Staff Engineer",
+        "VP Engineering", "Payment Service", "Architecture B",
+        "Phase Phase", "Incident Retrospective", "Slack Transcript"
+    }
+
+    # Filter name matches
+    actors = []
+    for name in mention_matches:
+        if name not in false_positives and len(name) > 2:
+            actors.append(name)
+
+    for name in raw_name_matches:
+        if name not in false_positives and len(name) > 3:
+            # Additional check: must not contain common non-person words
+            lower_name = name.lower()
+            non_person = {"the", "and", "for", "with", "from", "this", "that", "was", "are",
+                         "has", "have", "had", "will", "can", "may", "might", "should",
+                         "problem", "statement", "action", "items", "next", "steps",
+                         "conclusion", "requirements", "background", "context", "summary",
+                         "overview", "agenda", "attendees", "participants", "notes",
+                         "minutes", "discussion", "recommendation", "decision", "status",
+                         "timeline", "alternatives", "considered", "rejected", "root",
+                         "cause", "lessons", "learned", "risk", "assessment", "mitigation",
+                         "strategy", "budget", "resources", "scope", "objectives", "success",
+                         "criteria", "phase", "stage", "task", "item", "point", "note"}
+            if not any(w in lower_name.split() for w in non_person):
+                actors.append(name)
+
+    # Deduplicate and limit
+    actors = list(dict.fromkeys(actors))[:6]
+
     for actor in actors:
         entities.append(ExtractedEntity(
             name=actor,
@@ -99,7 +145,15 @@ def _heuristic_rule_based_extraction(title: str, text: str) -> ExtractedDocument
         ))
 
     # Detect common system/tech names
-    tech_keywords = ["PostgreSQL", "MongoDB", "Redis", "Kafka", "Docker", "Kubernetes", "AWS", "FastAPI", "Next.js", "GraphQL", "REST", "Supabase", "Gemini"]
+    tech_keywords = ["PostgreSQL", "MongoDB", "Redis", "Kafka", "Docker", "Kubernetes", "AWS",
+                     "FastAPI", "Next.js", "GraphQL", "REST", "Supabase", "Gemini", "React",
+                     "Node.js", "TypeScript", "Python", "Go", "Rust", "Java", "C++",
+                     "MySQL", "Elasticsearch", "RabbitMQ", "Celery", "Nginx", "Apache",
+                     "GCP", "Azure", "Terraform", "Ansible", "Jenkins",
+                     "Prometheus", "Grafana", "Datadog", "Splunk", "PagerDuty", "Slack",
+                     "Jira", "Confluence", "Notion", "Figma", "Miro", "Linear",
+                     "Architecture B", "Architecture A", "Event-Driven", "Microservices",
+                     "Monolith", "Serverless", "CQRS", "Event Sourcing", "Payment Service"]
     found_tech = [tech for tech in tech_keywords if tech.lower() in text.lower()]
     for tech in found_tech:
         entities.append(ExtractedEntity(
@@ -147,14 +201,16 @@ def _heuristic_rule_based_extraction(title: str, text: str) -> ExtractedDocument
             document_title=title
         ))
 
-    # Build basic relationships
+    # Build relationships between actors and tech
     if actors and found_tech:
-        relationships.append(ExtractedRelationship(
-            source=actors[0],
-            target=found_tech[0],
-            relation="evaluated_or_implemented",
-            context=f"Recorded connection in {title}"
-        ))
+        for i, actor in enumerate(actors[:2]):
+            for j, tech in enumerate(found_tech[:2]):
+                relationships.append(ExtractedRelationship(
+                    source=actor,
+                    target=tech,
+                    relation="evaluated_or_implemented",
+                    context=f"Recorded connection in {title}"
+                ))
 
     summary = f"Archived document '{title}' containing {len(events)} milestones, referencing {len(actors)} stakeholders and {len(found_tech)} systems."
 

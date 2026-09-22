@@ -8,10 +8,14 @@ class TextIngestRequest(BaseModel):
     text: str = Field(..., description="Raw text or markdown content")
     source_type: str = Field(default="text", description="Type of source: text, note, meeting_minutes")
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    path: Optional[str] = Field(default=None, description="Local file path if available")
+    url: Optional[str] = Field(default=None, description="Source URL if available")
+    project: Optional[str] = Field(default=None, description="Project or workspace name")
 
 class UrlIngestRequest(BaseModel):
     url: str = Field(..., description="URL to scrape and ingest")
     title: Optional[str] = Field(None, description="Optional custom title")
+    project: Optional[str] = Field(default=None, description="Project or workspace name")
 
 class IngestResponse(BaseModel):
     success: bool
@@ -22,6 +26,8 @@ class IngestResponse(BaseModel):
     extracted_entities_count: int
     extracted_events_count: int
     message: str
+    content_hash: Optional[str] = None
+    is_duplicate: bool = False
 
 # --- Extraction Models (AI Output) ---
 
@@ -58,6 +64,8 @@ class ExtractedDocumentData(BaseModel):
 class QueryRequest(BaseModel):
     query: str = Field(..., description="Fuzzy question regarding past decisions or events")
     top_k: int = Field(default=6, description="Number of evidence chunks to retrieve")
+    project: Optional[str] = Field(default=None, description="Filter by project")
+    source_type: Optional[str] = Field(default=None, description="Filter by source type")
 
 class MissingContextItem(BaseModel):
     category: str = Field(..., description="unrecorded_reason, missing_stakeholder, broken_chain, unresolved_question, gap_in_dates")
@@ -71,6 +79,10 @@ class CitationItem(BaseModel):
     source_type: str
     quote: str
     relevance: str
+    path: Optional[str] = Field(default=None, description="Local file path if available")
+    url: Optional[str] = Field(default=None, description="Source URL if available")
+    chunk_id: Optional[str] = Field(default=None, description="Source chunk ID")
+    score: Optional[float] = Field(default=None, description="Relevance score")
 
 class GraphNode(BaseModel):
     id: str
@@ -100,3 +112,5 @@ class ReconstructionResponse(BaseModel):
     graph: GraphData
     citations: List[CitationItem] = Field(default_factory=list)
     missing_context: List[MissingContextItem] = Field(default_factory=list)
+    sources_used: List[str] = Field(default_factory=list, description="List of source document IDs used")
+    backend_only: bool = Field(default=False, description="True if answer was computed without Gemini")

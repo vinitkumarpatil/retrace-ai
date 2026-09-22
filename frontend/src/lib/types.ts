@@ -7,6 +7,12 @@ export interface DocumentItem {
   content_preview: string;
   metadata?: Record<string, any>;
   created_at: string;
+  path?: string;
+  url?: string;
+  content_hash?: string;
+  project?: string;
+  indexed_at?: string;
+  index_status?: string;
   entity_count?: number;
   event_count?: number;
 }
@@ -50,6 +56,10 @@ export interface Citation {
   source_type: string;
   quote: string;
   relevance: string;
+  path?: string;
+  url?: string;
+  chunk_id?: string;
+  score?: number;
 }
 
 export interface ReconstructionResult {
@@ -65,6 +75,8 @@ export interface ReconstructionResult {
   };
   citations: Citation[];
   missing_context: MissingContextFlag[];
+  sources_used?: string[];
+  backend_only?: boolean;
 }
 
 export interface IngestResponse {
@@ -76,4 +88,6 @@ export interface IngestResponse {
   extracted_entities_count: number;
   extracted_events_count: number;
   message: string;
+  content_hash?: string;
+  is_duplicate?: boolean;
 }

@@ -1,0 +1,38 @@
+// Generate simple PNG icons for the Chrome extension
+// These are 1x1 placeholder icons - replace with actual icons for production
+
+const fs = require('fs');
+const path = require('path');
+
+// Simple 1x1 PNG header for placeholder icons
+// In production, replace these with actual designed icons
+const createPlaceholderPNG = (size) => {
+  // Minimal valid PNG: 1x1 blue pixel
+  const pngHeader = Buffer.from([
+    0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+    0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+    0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+    0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+    0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41, // IDAT chunk
+    0x54, 0x08, 0xD7, 0x63, 0x10, 0x60, 0x18, 0x00,
+    0x00, 0x00, 0x40, 0x00, 0x01, 0xB4, 0x00, 0x01,
+    0x27, 0x30, 0x26, 0x07, 0x00, 0x00, 0x00, 0x00, // IEND chunk
+    0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82
+  ]);
+  return pngHeader;
+};
+
+const iconsDir = path.join(__dirname, 'icons');
+if (!fs.existsSync(iconsDir)) {
+  fs.mkdirSync(iconsDir, { recursive: true });
+}
+
+[16, 48, 128].forEach(size => {
+  const iconPath = path.join(iconsDir, `icon${size}.png`);
+  if (!fs.existsSync(iconPath)) {
+    fs.writeFileSync(iconPath, createPlaceholderPNG(size));
+    console.log(`Created placeholder icon: ${iconPath}`);
+  }
+});
+
+console.log('Icons ready. Replace with actual icons for production.');

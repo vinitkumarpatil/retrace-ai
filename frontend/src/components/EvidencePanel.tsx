@@ -1,14 +1,15 @@
 'use client';
 
 import React from 'react';
-import { FileText, ExternalLink, Quote, Layers, CheckCircle } from 'lucide-react';
+import { FileText, ExternalLink, Quote, Layers, CheckCircle, FolderOpen, Globe } from 'lucide-react';
 import { Citation } from '@/lib/types';
 
 interface EvidencePanelProps {
   citations: Citation[];
+  backendOnly?: boolean;
 }
 
-export default function EvidencePanel({ citations }: EvidencePanelProps) {
+export default function EvidencePanel({ citations, backendOnly }: EvidencePanelProps) {
   if (!citations || citations.length === 0) {
     return null;
   }
@@ -45,9 +46,20 @@ export default function EvidencePanel({ citations }: EvidencePanelProps) {
           </div>
         </div>
 
-        <span className="text-xs font-mono px-2 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-200">
-          {citations.length} SOURCE RECORD{citations.length > 1 ? 'S' : ''}
-        </span>
+        <div className="flex items-center gap-2">
+          {backendOnly !== undefined && (
+            <span className={`text-[10px] font-mono px-2 py-0.5 rounded border font-semibold ${
+              backendOnly
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-violet-50 text-violet-700 border-violet-200'
+            }`}>
+              {backendOnly ? 'BACKEND SEARCH' : 'AI REASONING'}
+            </span>
+          )}
+          <span className="text-xs font-mono px-2 py-0.5 rounded bg-stone-100 text-stone-800 border border-stone-200">
+            {citations.length} SOURCE RECORD{citations.length > 1 ? 'S' : ''}
+          </span>
+        </div>
       </div>
 
       {/* Citations List */}
@@ -72,6 +84,35 @@ export default function EvidencePanel({ citations }: EvidencePanelProps) {
                 </span>
               </div>
 
+              {/* Source Path/URL */}
+              {(citation.path || citation.url) && (
+                <div className="flex items-center gap-2 mb-2 text-[11px] font-mono text-stone-500">
+                  {citation.path && (
+                    <span className="flex items-center gap-1">
+                      <FolderOpen className="w-3 h-3" />
+                      <span className="truncate max-w-[200px]">{citation.path}</span>
+                    </span>
+                  )}
+                  {citation.url && (
+                    <a
+                      href={citation.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-sky-600 hover:text-sky-800 hover:underline"
+                    >
+                      <Globe className="w-3 h-3" />
+                      <span className="truncate max-w-[200px]">{citation.url}</span>
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  )}
+                  {citation.score !== undefined && (
+                    <span className="ml-auto text-stone-400">
+                      Score: {citation.score.toFixed(3)}
+                    </span>
+                  )}
+                </div>
+              )}
+
               {/* Relevance Note */}
               {citation.relevance && (
                 <p className="text-[11px] font-mono text-stone-500 mb-2">
@@ -82,7 +123,7 @@ export default function EvidencePanel({ citations }: EvidencePanelProps) {
               {/* Exact Verbatim Quote */}
               <div className="bg-white p-2.5 rounded border border-[#E2DDD5] text-xs text-stone-700 font-sans italic flex items-start space-x-2">
                 <Quote className="w-3.5 h-3.5 text-amber-500 shrink-0 mt-0.5 not-italic" />
-                <span className="leading-relaxed">"{citation.quote}"</span>
+                <span className="leading-relaxed">&quot;{citation.quote}&quot;</span>
               </div>
             </div>
           );
