@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Compass, Database, Sparkles, UploadCloud, RefreshCw, FileText } from 'lucide-react';
+import { Radar, Database, Sparkles, UploadCloud, RefreshCw, FileStack } from 'lucide-react';
 
 interface NavbarProps {
   onOpenIngest: () => void;
@@ -19,72 +19,73 @@ export default function Navbar({
   docCount,
 }: NavbarProps) {
   return (
-    <header className="border-b border-[#E2DDD5] bg-[#FAF8F5]/90 backdrop-blur-md sticky top-0 z-40">
+    <header className="sticky top-0 z-40 border-b border-console-border bg-console-bg/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        
-        {/* Left: Blueprint Title & Spec Marker */}
-        <div className="flex items-center space-x-3">
-          <div className="w-9 h-9 rounded bg-[#1E293B] text-[#FAF8F5] flex items-center justify-center font-mono font-bold text-lg shadow-sm border border-stone-800">
-            <Compass className="w-5 h-5 text-amber-400" />
+
+        {/* Brand */}
+        <div className="flex items-center gap-3">
+          <div className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-console-s3 to-console-s1 border border-console-border flex items-center justify-center glow-cyan">
+            <Radar className="w-5 h-5 text-console-cyan" />
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <span className="font-bold text-stone-900 tracking-tight text-lg">ReTrace</span>
-              <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300 font-semibold">
-                v0.1 // FORENSIC
+          <div className="leading-tight">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold tracking-tight text-white">ReTrace</span>
+              <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-console-cyan/10 text-console-cyan border border-console-cyan/25 tracking-widest">
+                v0.1
               </span>
             </div>
-            <p className="text-[11px] font-mono text-stone-500 uppercase tracking-widest">
-              Lost Context Recovery Engine
+            <p className="text-[10px] font-mono text-console-mute uppercase tracking-[0.2em]">
+              Context Recovery Engine
             </p>
           </div>
         </div>
 
-        {/* Middle: Technical Coordinate / Status Stamp */}
-        <div className="hidden md:flex items-center space-x-4 text-xs font-mono text-stone-600 bg-white/70 px-3 py-1.5 rounded border border-[#E2DDD5]">
-          <div className="flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>GRID: ACTIVE</span>
-          </div>
-          <span className="text-stone-300">|</span>
-          <div className="flex items-center space-x-1">
-            <Database className="w-3.5 h-3.5 text-stone-400" />
-            <span>DOCS: {docCount}</span>
-          </div>
-          <span className="text-stone-300">|</span>
-          <div className="flex items-center space-x-1">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>GEMINI: READY</span>
-          </div>
+        {/* Status strip */}
+        <div className="hidden md:flex items-center gap-3 text-[11px] font-mono text-console-dim inset-tile px-3 py-1.5">
+          <span className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-console-emerald pulse-dot" />
+            ONLINE
+          </span>
+          <span className="text-console-border">/</span>
+          <span className="flex items-center gap-1.5">
+            <Database className="w-3.5 h-3.5 text-console-mute" />
+            {docCount} DOCS
+          </span>
+          <span className="text-console-border">/</span>
+          <span className="flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-console-violet" />
+            GEMINI
+          </span>
         </div>
 
-        {/* Right: Actions */}
-        <div className="flex items-center space-x-2">
+        {/* Actions */}
+        <div className="flex items-center gap-2">
           <button
             onClick={onOpenDocLibrary}
-            className="px-3 py-1.5 text-xs font-mono text-stone-700 bg-white hover:bg-stone-50 border border-[#E2DDD5] rounded flex items-center space-x-1.5 transition-colors shadow-xs"
-            title="Inspect Ingested Documents"
+            className="px-3 py-1.5 text-xs font-medium text-console-dim hover:text-white bg-console-s2 hover:bg-console-s3 border border-console-border rounded-lg flex items-center gap-1.5 transition-colors"
+            title="Inspect ingested documents"
           >
-            <FileText className="w-3.5 h-3.5 text-stone-500" />
-            <span>Documents ({docCount})</span>
+            <FileStack className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Documents</span>
+            <span className="text-console-mute">{docCount}</span>
           </button>
 
           <button
             onClick={onSeedDemo}
             disabled={isSeeding}
-            className="px-3 py-1.5 text-xs font-mono text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded flex items-center space-x-1.5 transition-colors shadow-xs"
-            title="Load Project Meridian sample decision archive"
+            className="px-3 py-1.5 text-xs font-medium text-console-violet hover:text-white bg-console-violet/10 hover:bg-console-violet/20 border border-console-violet/25 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-60"
+            title="Load Project Meridian sample archive"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isSeeding ? 'animate-spin text-amber-600' : 'text-amber-500'}`} />
-            <span>{isSeeding ? 'Seeding...' : 'Load Meridian Demo'}</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isSeeding ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{isSeeding ? 'Seeding…' : 'Demo'}</span>
           </button>
 
           <button
             onClick={onOpenIngest}
-            className="px-3.5 py-1.5 text-xs font-mono font-medium text-white bg-[#1E293B] hover:bg-stone-800 rounded flex items-center space-x-1.5 transition-colors shadow-xs"
+            className="px-3.5 py-1.5 text-xs font-semibold text-console-bg bg-console-cyan hover:bg-white rounded-lg flex items-center gap-1.5 transition-colors"
           >
-            <UploadCloud className="w-3.5 h-3.5 text-amber-300" />
-            <span>Ingest Document</span>
+            <UploadCloud className="w-3.5 h-3.5" />
+            <span>Ingest</span>
           </button>
         </div>
 

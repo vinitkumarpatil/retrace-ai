@@ -3,95 +3,139 @@
 @tailwind utilities;
 
 :root {
-  --bg-blueprint: #FAF8F5;
-  --ink-primary: #1A232F;
-  --ink-secondary: #526071;
-  --grid-line: rgba(71, 85, 105, 0.08);
-  --border-blueprint: #E2DDD5;
-  --ochre-accent: #D97706;
-  --sage-accent: #059669;
-  --rust-accent: #DC2626;
+  /* Surfaces */
+  --bg-base: #0A0D13;
+  --surface-1: #10141C;
+  --surface-2: #161B26;
+  --surface-3: #1D2432;
+  /* Lines */
+  --border: #232B3A;
+  --border-strong: #2E3849;
+  --hairline: rgba(148, 163, 184, 0.10);
+  /* Ink */
+  --text: #E7EBF3;
+  --text-dim: #9AA5B8;
+  --text-mute: #616C7E;
+  /* Accents */
+  --cyan: #2DD4E8;
+  --violet: #A78BFA;
+  --emerald: #34D399;
+  --amber: #FBBF24;
+  --rose: #FB7185;
+
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "SF Mono", "Cascadia Code", ui-monospace, "Courier New", monospace;
+}
+
+html {
+  color-scheme: dark;
 }
 
 body {
-  background-color: var(--bg-blueprint);
-  color: var(--ink-primary);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text);
+  font-family: var(--font-sans);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Blueprint Drafting Grid Background */
-.blueprint-grid {
-  background-image: 
-    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: 24px 24px;
+/* Ambient console backdrop: fine grid + top glow */
+.console-bg {
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(1100px 480px at 78% -8%, rgba(45, 212, 232, 0.10), transparent 60%),
+    radial-gradient(900px 420px at 12% 4%, rgba(167, 139, 250, 0.08), transparent 60%),
+    linear-gradient(to right, var(--hairline) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--hairline) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 32px 32px, 32px 32px;
 }
 
-.blueprint-grid-dense {
-  background-image: 
-    linear-gradient(to right, rgba(71, 85, 105, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(71, 85, 105, 0.05) 1px, transparent 1px);
-  background-size: 12px 12px;
-}
-
-/* Custom architectural hairline borders */
-.drafting-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E2DDD5;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.drafting-card:hover {
-  border-color: #CBD5E1;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-}
-
-/* Technical blueprint corner ticks */
-.corner-ticks {
+/* Glass panel — the core surface */
+.panel {
   position: relative;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)) ,
+    var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.03) inset, 0 12px 32px -18px rgba(0, 0, 0, 0.8);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.corner-ticks::before {
+.panel-hover:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 18px 46px -22px rgba(0, 0, 0, 0.9);
+}
+
+.inset-tile {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+/* Corner brackets — technical accent on hero/console panels */
+.brackets::before,
+.brackets::after {
   content: "";
   position: absolute;
-  top: -1px;
-  left: -1px;
-  width: 6px;
-  height: 6px;
-  border-top: 2px solid #94A3B8;
-  border-left: 2px solid #94A3B8;
+  width: 12px;
+  height: 12px;
   pointer-events: none;
+  opacity: 0.7;
+}
+.brackets::before {
+  top: 9px;
+  left: 9px;
+  border-top: 1.5px solid var(--cyan);
+  border-left: 1.5px solid var(--cyan);
+}
+.brackets::after {
+  bottom: 9px;
+  right: 9px;
+  border-bottom: 1.5px solid var(--cyan);
+  border-right: 1.5px solid var(--cyan);
 }
 
-.corner-ticks::after {
+.text-glow-cyan { text-shadow: 0 0 18px rgba(45, 212, 232, 0.45); }
+.glow-cyan { box-shadow: 0 0 0 1px rgba(45, 212, 232, 0.35), 0 0 24px -4px rgba(45, 212, 232, 0.5); }
+.glow-violet { box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.30), 0 0 24px -6px rgba(167, 139, 250, 0.45); }
+
+/* Focus ring */
+.focus-cyan:focus,
+.focus-cyan:focus-visible {
+  outline: none;
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(45, 212, 232, 0.18);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2A3446; border-radius: 6px; border: 2px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background: #394659; background-clip: padding-box; }
+
+/* Animations */
+@keyframes fade-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-rise { animation: fade-rise 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+@keyframes scan {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+.scanline { position: relative; overflow: hidden; }
+.scanline::after {
   content: "";
   position: absolute;
-  bottom: -1px;
-  right: -1px;
-  width: 6px;
-  height: 6px;
-  border-bottom: 2px solid #94A3B8;
-  border-right: 2px solid #94A3B8;
-  pointer-events: none;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(45, 212, 232, 0.12), transparent);
+  animation: scan 1.6s linear infinite;
 }
 
-/* Clean technical scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
 }
-
-::-webkit-scrollbar-track {
-  background: #FAF8F5;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #94A3B8;
-}
+.pulse-dot { animation: pulse-dot 1.8s ease-in-out infinite; }

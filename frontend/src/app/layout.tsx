@@ -13,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="blueprint-grid min-h-screen text-slate-800 antialiased selection:bg-amber-100 selection:text-amber-900">
+      <body className="console-bg min-h-screen text-console-ink antialiased selection:bg-cyan-400/30 selection:text-white">
         {children}
       </body>
     </html>

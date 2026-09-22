@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, AlertTriangle, AlertCircle, Bookmark, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, AlertCircle, Crosshair } from 'lucide-react';
 
 interface NarrativeCardProps {
   directAnswer: string;
@@ -18,93 +18,74 @@ export default function NarrativeCard({
   confidenceRationale,
   query,
 }: NarrativeCardProps) {
-  
-  // Style config for confidence badge
+
   const confidenceConfig = {
-    high: {
-      bg: 'bg-emerald-50',
-      text: 'text-emerald-800',
-      border: 'border-emerald-300',
-      icon: ShieldCheck,
-      label: 'HIGH CONFIDENCE',
-    },
-    medium: {
-      bg: 'bg-amber-50',
-      text: 'text-amber-800',
-      border: 'border-amber-300',
-      icon: AlertTriangle,
-      label: 'MEDIUM CONFIDENCE',
-    },
-    low: {
-      bg: 'bg-rose-50',
-      text: 'text-rose-800',
-      border: 'border-rose-300',
-      icon: AlertCircle,
-      label: 'LOW CONFIDENCE',
-    },
-  }[confidenceScore] || {
-    bg: 'bg-stone-50',
-    text: 'text-stone-800',
-    border: 'border-stone-300',
-    icon: AlertCircle,
-    label: 'CONFIDENCE UNRATED',
-  };
+    high: { text: 'text-console-emerald', ring: 'border-console-emerald/30 bg-console-emerald/10', icon: ShieldCheck, label: 'HIGH', dots: 4 },
+    medium: { text: 'text-console-amber', ring: 'border-console-amber/30 bg-console-amber/10', icon: AlertTriangle, label: 'MEDIUM', dots: 3 },
+    low: { text: 'text-console-rose', ring: 'border-console-rose/30 bg-console-rose/10', icon: AlertCircle, label: 'LOW', dots: 2 },
+  }[confidenceScore] || { text: 'text-console-dim', ring: 'border-console-border bg-console-s2', icon: AlertCircle, label: 'UNRATED', dots: 1 };
 
   const ConfidenceIcon = confidenceConfig.icon;
 
   return (
-    <div className="drafting-card rounded-md border border-[#E2DDD5] bg-white p-6 relative corner-ticks shadow-xs">
-      
-      {/* Header bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-[#E2DDD5]">
-        <div className="flex items-center space-x-2">
-          <div className="p-1.5 bg-stone-100 rounded text-stone-700">
-            <Bookmark className="w-4 h-4 text-[#D97706]" />
+    <div className="panel panel-hover animate-rise p-6">
+
+      {/* Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-console-border">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-lg bg-console-cyan/10 border border-console-cyan/20 shrink-0">
+            <Crosshair className="w-4 h-4 text-console-cyan" />
           </div>
-          <div>
-            <h2 className="text-sm font-mono font-bold text-stone-900 uppercase tracking-wider">
-              RECONSTRUCTED CONTEXT & REASONING
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-white uppercase tracking-wider">
+              Reconstructed Answer
             </h2>
-            <p className="text-xs font-mono text-stone-500">
-              TARGET INQUIRY: "{query}"
+            <p className="text-xs font-mono text-console-mute truncate">
+              query: “{query}”
             </p>
           </div>
         </div>
 
-        {/* Confidence Stamp */}
-        <div className={`flex items-center space-x-2 px-3 py-1 rounded border ${confidenceConfig.bg} ${confidenceConfig.border} ${confidenceConfig.text} text-xs font-mono font-semibold`}>
+        {/* Confidence stamp with dot meter */}
+        <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-lg border ${confidenceConfig.ring} ${confidenceConfig.text} text-xs font-mono font-semibold`}>
           <ConfidenceIcon className="w-4 h-4" />
           <span>{confidenceConfig.label}</span>
+          <span className="flex items-center gap-0.5">
+            {[0, 1, 2, 3].map((i) => (
+              <span
+                key={i}
+                className={`w-1.5 h-1.5 rounded-full ${i < confidenceConfig.dots ? 'bg-current' : 'bg-current/20'}`}
+              />
+            ))}
+          </span>
         </div>
       </div>
 
-      {/* Direct Executive Answer */}
-      <div className="mb-6 p-4 rounded bg-[#FAF8F5] border-l-4 border-amber-500 border border-[#E2DDD5]">
-        <span className="text-[10px] font-mono uppercase text-amber-700 font-bold tracking-wider block mb-1">
-          // EXECUTIVE DIRECT ANSWER
+      {/* Direct answer */}
+      <div className="mb-6 p-4 rounded-xl bg-console-s2 border border-console-border relative overflow-hidden">
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-console-cyan" />
+        <span className="text-[10px] font-mono uppercase text-console-cyan font-bold tracking-widest block mb-1.5">
+          Direct answer
         </span>
-        <p className="text-stone-900 font-medium text-base leading-relaxed">
+        <p className="text-white font-medium text-base leading-relaxed">
           {directAnswer}
         </p>
       </div>
 
-      {/* In-depth Forensic Reasoning */}
-      <div className="space-y-3">
-        <span className="text-[10px] font-mono uppercase text-stone-500 font-bold tracking-wider block">
-          // FORENSIC REASONING TRAIL & ANALYSIS
+      {/* Reasoning */}
+      <div className="space-y-2">
+        <span className="text-[10px] font-mono uppercase text-console-mute font-bold tracking-widest block">
+          Reasoning trail
         </span>
-        <div className="text-stone-700 text-sm leading-relaxed whitespace-pre-line font-sans pl-2 border-l border-stone-200">
+        <div className="text-console-dim text-sm leading-relaxed whitespace-pre-line pl-3 border-l border-console-border">
           {reasoningSummary}
         </div>
       </div>
 
-      {/* Confidence Rationale Footnote */}
-      <div className="mt-5 pt-3 border-t border-dashed border-[#E2DDD5] flex items-center justify-between text-xs font-mono text-stone-500">
-        <span className="flex items-center space-x-1.5">
-          <CheckCircle2 className="w-3.5 h-3.5 text-stone-400" />
-          <span>EVIDENCE BASIS: {confidenceRationale}</span>
-        </span>
-        <span className="text-stone-400">STATUS: VERIFIED CITATION TRAIL</span>
+      {/* Footnote */}
+      <div className="mt-5 pt-3 border-t border-console-border flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-console-mute">
+        <span>evidence basis: {confidenceRationale}</span>
+        <span className="text-console-emerald/80">✓ verified citation trail</span>
       </div>
 
     </div>

@@ -9,42 +9,41 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        blueprint: {
-          bg: "#FAF8F5",
-          panel: "#FFFFFF",
-          subtle: "#F4EFEA",
-          border: "#E2DDD5",
-          ink: "#1C2430",
-          muted: "#6B7280",
-          grid: "rgba(100, 116, 139, 0.08)",
-          ochre: {
-            DEFAULT: "#D97706",
-            light: "#FEF3C7",
-            dark: "#B45309",
+        console: {
+          bg: "#0A0D13",
+          s1: "#10141C",
+          s2: "#161B26",
+          s3: "#1D2432",
+          border: "#232B3A",
+          "border-strong": "#2E3849",
+          ink: "#E7EBF3",
+          dim: "#9AA5B8",
+          mute: "#616C7E",
+          cyan: {
+            DEFAULT: "#2DD4E8",
+            dim: "#1B94A6",
           },
-          sage: {
-            DEFAULT: "#059669",
-            light: "#D1FAE5",
-            dark: "#047857",
+          violet: {
+            DEFAULT: "#A78BFA",
+            dim: "#7C5CE0",
           },
-          rust: {
-            DEFAULT: "#C2410C",
-            light: "#FEE2E2",
-            dark: "#991B1B",
-          },
-          navy: {
-            DEFAULT: "#1E293B",
-            light: "#334155",
-            dark: "#0F172A",
-          }
+          emerald: "#34D399",
+          amber: "#FBBF24",
+          rose: "#FB7185",
         },
       },
       fontFamily: {
-        mono: ["var(--font-mono)", "JetBrains Mono", "Courier New", "monospace"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "ui-monospace", "monospace"],
         sans: ["var(--font-sans)", "Inter", "-apple-system", "sans-serif"],
       },
-      backgroundImage: {
-        "blueprint-grid": "radial-gradient(circle, #D1D5DB 1px, transparent 1px)",
+      keyframes: {
+        "fade-in": {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
+      },
+      animation: {
+        "fade-in": "fade-in 0.3s ease-out both",
       },
     },
   },

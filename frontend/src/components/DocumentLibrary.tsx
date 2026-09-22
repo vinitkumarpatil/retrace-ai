@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, FileText, Calendar, Database, Layers } from 'lucide-react';
+import { X, FileText, Calendar, Database } from 'lucide-react';
 import { DocumentItem } from '@/lib/types';
 
 interface DocumentLibraryProps {
@@ -14,57 +14,55 @@ export default function DocumentLibrary({ isOpen, onClose, documents }: Document
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
-      <div className="w-full max-w-2xl bg-white border border-[#E2DDD5] rounded-md shadow-xl overflow-hidden relative corner-ticks flex flex-col max-h-[85vh]">
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div className="w-full max-w-2xl panel brackets overflow-hidden flex flex-col max-h-[85vh]">
+
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[#E2DDD5] bg-[#FAF8F5]">
-          <div className="flex items-center space-x-2">
-            <Database className="w-4 h-4 text-stone-700" />
-            <h2 className="text-xs font-mono font-bold text-stone-900 uppercase tracking-wider">
-              INGESTED DOCUMENT ARCHIVE ({documents.length} ARTIFACTS)
+        <div className="flex items-center justify-between p-4 border-b border-console-border">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-console-cyan" />
+            <h2 className="text-xs font-mono font-bold text-white uppercase tracking-wider">
+              Document Archive
+              <span className="text-console-mute ml-1.5">({documents.length})</span>
             </h2>
           </div>
-          <button onClick={onClose} className="text-stone-400 hover:text-stone-700 p-1 rounded">
+          <button onClick={onClose} className="text-console-mute hover:text-white p-1 rounded transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* List */}
-        <div className="p-6 overflow-y-auto space-y-4">
+        <div className="p-6 overflow-y-auto space-y-3">
           {documents.length === 0 ? (
-            <p className="text-center py-8 text-xs font-mono text-stone-400">
-              NO DOCUMENTS INGESTED YET. CLICK "LOAD MERIDIAN DEMO" TO GET STARTED.
+            <p className="text-center py-10 text-xs font-mono text-console-mute">
+              NO DOCUMENTS INGESTED YET. LOAD THE DEMO TO GET STARTED.
             </p>
           ) : (
             documents.map((doc) => (
-              <div
-                key={doc.id}
-                className="p-4 rounded bg-[#FAF8F5] border border-[#E2DDD5] hover:border-stone-400 transition-colors"
-              >
+              <div key={doc.id} className="inset-tile p-4 hover:border-console-border-strong transition-colors">
                 <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <div className="flex items-center space-x-2">
-                    <FileText className="w-4 h-4 text-stone-500 shrink-0" />
-                    <h3 className="text-xs font-bold text-stone-900 font-mono">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <FileText className="w-4 h-4 text-console-mute shrink-0" />
+                    <h3 className="text-xs font-semibold text-white font-mono truncate">
                       {doc.title}
                     </h3>
                   </div>
-                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-stone-100 border border-stone-200 text-stone-700 font-semibold">
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-console-s3 border border-console-border text-console-dim font-semibold shrink-0">
                     {doc.source_type}
                   </span>
                 </div>
 
-                <p className="text-xs text-stone-600 font-sans line-clamp-2 mb-2">
+                <p className="text-xs text-console-dim line-clamp-2 mb-2">
                   {doc.content_preview}
                 </p>
 
-                <div className="flex items-center space-x-4 text-[11px] font-mono text-stone-500 pt-2 border-t border-dashed border-[#E2DDD5]">
-                  <span className="flex items-center space-x-1">
-                    <Calendar className="w-3 h-3 text-stone-400" />
-                    <span>{new Date(doc.created_at).toLocaleDateString()}</span>
+                <div className="flex items-center gap-4 text-[11px] font-mono text-console-mute pt-2 border-t border-console-border">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(doc.created_at).toLocaleDateString()}
                   </span>
-                  <span>Entities: {doc.entity_count || 0}</span>
-                  <span>Milestones: {doc.event_count || 0}</span>
+                  <span>entities: {doc.entity_count || 0}</span>
+                  <span>events: {doc.event_count || 0}</span>
                 </div>
               </div>
             ))
@@ -72,12 +70,12 @@ export default function DocumentLibrary({ isOpen, onClose, documents }: Document
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-[#E2DDD5] bg-[#FAF8F5] text-right">
+        <div className="p-3 border-t border-console-border text-right">
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-mono bg-white border border-[#E2DDD5] hover:bg-stone-50 rounded text-stone-700 shadow-2xs"
+            className="px-4 py-1.5 text-xs font-medium bg-console-s2 border border-console-border hover:bg-console-s3 hover:text-white rounded-lg text-console-dim transition-colors"
           >
-            Close Archive
+            Close
           </button>
         </div>
 

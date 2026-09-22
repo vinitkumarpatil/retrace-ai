@@ -12,7 +12,7 @@ import IngestionZone from '@/components/IngestionZone';
 import DocumentLibrary from '@/components/DocumentLibrary';
 import { queryReconstruction, listDocuments, seedSampleData } from '@/lib/api';
 import { ReconstructionResult, DocumentItem } from '@/lib/types';
-import { Compass, RefreshCw, AlertCircle, FileSearch, Sparkles, Layers } from 'lucide-react';
+import { Radar, RefreshCw, AlertCircle, ScanSearch, Layers } from 'lucide-react';
 
 export default function DashboardPage() {
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
@@ -29,7 +29,7 @@ export default function DashboardPage() {
       const docs = await listDocuments();
       setDocuments(docs);
     } catch (e) {
-      console.warn("Could not fetch documents", e);
+      console.warn('Could not fetch documents', e);
     }
   };
 
@@ -45,7 +45,7 @@ export default function DashboardPage() {
       const data = await queryReconstruction(queryText);
       setResult(data);
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to reconstruct context. Please verify backend is running.');
+      setErrorMessage(err.message || 'Failed to reconstruct context. Please verify the backend is running.');
     } finally {
       setIsLoading(false);
     }
@@ -57,8 +57,7 @@ export default function DashboardPage() {
     try {
       await seedSampleData();
       await fetchDocs();
-      // Auto run first sample query to showcase the system immediately
-      await handleSearch("Why did we migrate to PostgreSQL and change the vector index on August 12?");
+      await handleSearch('Why did we migrate to PostgreSQL and change the vector index on August 12?');
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to seed sample project records.');
     } finally {
@@ -67,8 +66,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FAF8F5]">
-      {/* Blueprint Header */}
+    <div className="min-h-screen flex flex-col">
       <Navbar
         onOpenIngest={() => setIsIngestOpen(true)}
         onSeedDemo={handleSeedDemo}
@@ -77,42 +75,37 @@ export default function DashboardPage() {
         docCount={documents.length}
       />
 
-      {/* Main Drafting Workspace */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        
-        {/* Top Section: Query Console */}
-        <section>
-          <QueryConsole onSearch={handleSearch} isLoading={isLoading} />
-        </section>
 
-        {/* Error Alert */}
+        {/* Query console */}
+        <QueryConsole onSearch={handleSearch} isLoading={isLoading} />
+
+        {/* Error */}
         {errorMessage && (
-          <div className="p-4 rounded border border-rose-300 bg-rose-50 text-xs font-mono text-rose-800 flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <div className="p-4 rounded-xl border border-console-rose/30 bg-console-rose/[0.06] text-xs font-mono text-console-rose flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>ERROR: {errorMessage}</span>
           </div>
         )}
 
-        {/* Loading State */}
+        {/* Loading */}
         {isLoading && (
-          <div className="drafting-card rounded-md border border-[#E2DDD5] bg-white p-12 text-center relative corner-ticks">
-            <div className="inline-flex items-center justify-center p-3 rounded-full bg-amber-50 border border-amber-200 text-amber-600 mb-3 animate-pulse">
-              <Compass className="w-8 h-8 animate-spin" />
+          <div className="panel brackets scanline p-12 text-center">
+            <div className="inline-flex items-center justify-center p-3 rounded-full bg-console-cyan/10 border border-console-cyan/25 text-console-cyan mb-4">
+              <Radar className="w-8 h-8 animate-spin" />
             </div>
-            <h3 className="text-sm font-mono font-bold text-stone-900 uppercase tracking-wider">
-              RECONSTRUCTING FORENSIC CONTEXT ACROSS HISTORICAL ARTIFACTS
+            <h3 className="text-sm font-semibold text-white uppercase tracking-wider">
+              Reconstructing forensic context
             </h3>
-            <p className="text-xs font-mono text-stone-500 mt-1">
-              Executing vector similarity search, keyword correlation, and Gemini evidence synthesis...
+            <p className="text-xs font-mono text-console-mute mt-1.5">
+              vector similarity · keyword correlation · Gemini synthesis
             </p>
           </div>
         )}
 
-        {/* Reconstructed Results View */}
+        {/* Results */}
         {!isLoading && result && (
-          <div className="space-y-8 animate-in fade-in duration-300">
-            
-            {/* Row 1: Executive Narrative Answer */}
+          <div className="space-y-8">
             <NarrativeCard
               directAnswer={result.direct_answer}
               reasoningSummary={result.reasoning_summary}
@@ -121,108 +114,92 @@ export default function DashboardPage() {
               query={currentQuery}
             />
 
-            {/* Row 2: Prominently Marked Missing Context Callout */}
             <MissingContextCallout missingContext={result.missing_context} />
 
-            {/* Row 3: 2-Column Split (Timeline & Evidence on Left, Force Graph on Right) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-              
-              {/* Left Column (7 cols): Timeline & Primary Evidence */}
               <div className="lg:col-span-7 space-y-8">
                 <TimelineView timeline={result.timeline} />
                 <EvidencePanel citations={result.citations} />
               </div>
-
-              {/* Right Column (5 cols): Force-Directed Entity Graph */}
-              <div className="lg:col-span-5 sticky top-24">
+              <div className="lg:col-span-5 lg:sticky lg:top-24">
                 <RelationshipGraph
                   nodes={result.graph?.nodes || []}
                   links={result.graph?.links || []}
                 />
               </div>
-
             </div>
-
           </div>
         )}
 
-        {/* Empty / Initial State Hero */}
+        {/* Empty / hero */}
         {!isLoading && !result && (
-          <div className="drafting-card rounded-md border border-[#E2DDD5] bg-white p-10 relative corner-ticks shadow-xs text-center max-w-3xl mx-auto my-8">
-            <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto mb-4">
-              <FileSearch className="w-6 h-6" />
+          <div className="panel brackets animate-rise p-10 text-center max-w-3xl mx-auto my-8">
+            <div className="w-14 h-14 rounded-2xl bg-console-cyan/10 border border-console-cyan/25 text-console-cyan flex items-center justify-center mx-auto mb-5 glow-cyan">
+              <ScanSearch className="w-7 h-7" />
             </div>
 
-            <h2 className="text-base font-mono font-bold text-stone-900 uppercase tracking-wider">
-              WELCOME TO RETRACE // LOST CONTEXT RECOVERY ENGINE
+            <h2 className="text-xl font-semibold text-white tracking-tight">
+              Recover the <span className="text-console-cyan text-glow-cyan">lost context</span> behind past decisions
             </h2>
 
-            <p className="text-xs text-stone-600 font-sans max-w-xl mx-auto mt-2 leading-relaxed">
-              When engineers leave, teams reorganize, or architectural pivots happen in Slack threads, 
-              the "why" behind past decisions is lost. ReTrace analyzes your scattered PDFs, meeting notes, 
-              and transcripts to reconstruct clear timelines, map entity relationships, and flag missing information.
+            <p className="text-sm text-console-dim max-w-xl mx-auto mt-3 leading-relaxed">
+              When engineers leave, teams reorganize, or architectural pivots happen in Slack threads,
+              the “why” behind decisions is lost. ReTrace analyzes your scattered PDFs, notes, and
+              transcripts to reconstruct timelines, map entity relationships, and flag missing information.
             </p>
 
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               <button
                 onClick={handleSeedDemo}
                 disabled={isSeeding}
-                className="px-4 py-2 bg-[#1E293B] hover:bg-stone-800 disabled:bg-stone-400 text-white rounded text-xs font-mono font-semibold flex items-center space-x-2 transition-all shadow-xs"
+                className="px-4 py-2.5 bg-console-cyan hover:bg-white disabled:bg-console-s3 disabled:text-console-mute text-console-bg rounded-lg text-xs font-semibold flex items-center gap-2 transition-all"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isSeeding ? 'animate-spin text-amber-400' : 'text-amber-400'}`} />
-                <span>{isSeeding ? "Seeding Scenario..." : "Load Meridian Demo Scenario"}</span>
+                <RefreshCw className={`w-3.5 h-3.5 ${isSeeding ? 'animate-spin' : ''}`} />
+                <span>{isSeeding ? 'Seeding scenario…' : 'Load Meridian Demo'}</span>
               </button>
 
               <button
                 onClick={() => setIsIngestOpen(true)}
-                className="px-4 py-2 bg-white hover:bg-stone-50 border border-[#E2DDD5] text-stone-800 rounded text-xs font-mono font-semibold flex items-center space-x-2 transition-all shadow-xs"
+                className="px-4 py-2.5 bg-console-s2 hover:bg-console-s3 border border-console-border text-console-dim hover:text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-all"
               >
-                <Layers className="w-3.5 h-3.5 text-stone-500" />
-                <span>Upload Custom Documents</span>
+                <Layers className="w-3.5 h-3.5" />
+                <span>Upload Documents</span>
               </button>
             </div>
 
-            {/* Feature Checklist */}
-            <div className="mt-8 pt-6 border-t border-dashed border-[#E2DDD5] grid grid-cols-1 sm:grid-cols-3 gap-4 text-left font-mono text-[11px] text-stone-600">
-              <div className="p-3 bg-[#FAF8F5] rounded border border-[#E2DDD5]">
-                <strong className="text-stone-900 block mb-1">// HYBRID RETRIEVAL</strong>
-                Vector similarity search via pgvector + exact keyword token matching.
-              </div>
-              <div className="p-3 bg-[#FAF8F5] rounded border border-[#E2DDD5]">
-                <strong className="text-stone-900 block mb-1">// CHRONO TIMELINE</strong>
-                Step-by-step reconstructed decision path with exact document citations.
-              </div>
-              <div className="p-3 bg-[#FAF8F5] rounded border border-[#E2DDD5]">
-                <strong className="text-stone-900 block mb-1">// ZERO HALLUCINATION</strong>
-                Explicitly flags unrecorded reasons, missing stakeholders, and knowledge gaps.
-              </div>
+            {/* Feature grid */}
+            <div className="mt-8 pt-6 border-t border-console-border grid grid-cols-1 sm:grid-cols-3 gap-3 text-left font-mono text-[11px]">
+              {[
+                { t: 'Hybrid Retrieval', d: 'Vector similarity via pgvector + exact keyword token matching.', c: 'text-console-cyan' },
+                { t: 'Chrono Timeline', d: 'Step-by-step decision path with exact document citations.', c: 'text-console-emerald' },
+                { t: 'Zero Hallucination', d: 'Flags unrecorded reasons, missing stakeholders, and gaps.', c: 'text-console-rose' },
+              ].map((f) => (
+                <div key={f.t} className="inset-tile p-3">
+                  <strong className={`block mb-1 ${f.c}`}>// {f.t}</strong>
+                  <span className="text-console-dim">{f.d}</span>
+                </div>
+              ))}
             </div>
-
           </div>
         )}
 
       </main>
 
-      {/* Ingestion Studio Modal */}
       <IngestionZone
         isOpen={isIngestOpen}
         onClose={() => setIsIngestOpen(false)}
-        onSuccess={() => {
-          fetchDocs();
-        }}
+        onSuccess={fetchDocs}
       />
 
-      {/* Document Library Modal */}
       <DocumentLibrary
         isOpen={isDocLibraryOpen}
         onClose={() => setIsDocLibraryOpen(false)}
         documents={documents}
       />
 
-      {/* Blueprint Footer */}
-      <footer className="border-t border-[#E2DDD5] bg-white/70 py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs font-mono text-stone-400">
-          RETRACE AI // ARCHITECTURAL KNOWLEDGE SYSTEM // PARCHMENT SPEC v0.1
+      <footer className="border-t border-console-border py-4 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 text-center text-[11px] font-mono text-console-mute tracking-wider">
+          RETRACE // CONTEXT RECOVERY ENGINE // CONSOLE SPEC v0.1
         </div>
       </footer>
     </div>
