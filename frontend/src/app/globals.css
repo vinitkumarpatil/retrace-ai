@@ -2,53 +2,202 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─────────────────────────────────────────────
+   LIGHT MODE (default) CSS Variables
+───────────────────────────────────────────── */
 :root {
-  --bg-blueprint: #FAF8F5;
+  --bg-blueprint: #EEF4FF;
   --ink-primary: #1A232F;
   --ink-secondary: #526071;
-  --grid-line: rgba(71, 85, 105, 0.08);
-  --border-blueprint: #E2DDD5;
+  --grid-line: rgba(59, 130, 246, 0.12);
+  --border-blueprint: #C7D9F5;
   --ochre-accent: #D97706;
   --sage-accent: #059669;
   --rust-accent: #DC2626;
+  --card-bg: #FFFFFF;
+  --card-border: #C7D9F5;
+  --card-hover-border: #93C5FD;
+  --nav-bg: rgba(239, 246, 255, 0.92);
+  --scrollbar-track: #EEF4FF;
+  --scrollbar-thumb: #93C5FD;
+  --input-bg: #F0F7FF;
 }
 
+/* ─────────────────────────────────────────────
+   DARK MODE CSS Variables
+───────────────────────────────────────────── */
+:root[data-theme="dark"] {
+  --bg-blueprint: #0C1220;
+  --ink-primary: #E2E8F0;
+  --ink-secondary: #94A3B8;
+  --grid-line: rgba(148, 163, 184, 0.06);
+  --border-blueprint: #1E2D45;
+  --ochre-accent: #FBBF24;
+  --sage-accent: #34D399;
+  --rust-accent: #F87171;
+  --card-bg: #111827;
+  --card-border: #1E2D45;
+  --card-hover-border: #334155;
+  --nav-bg: rgba(12, 18, 32, 0.95);
+  --scrollbar-track: #0C1220;
+  --scrollbar-thumb: #1E2D45;
+  --input-bg: #0F1C2E;
+}
+
+/* ─────────────────────────────────────────────
+   BASE BODY
+───────────────────────────────────────────── */
 body {
   background-color: var(--bg-blueprint);
   color: var(--ink-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   min-height: 100vh;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Blueprint Drafting Grid Background */
-.blueprint-grid {
-  background-image: 
+/* ─────────────────────────────────────────────
+   DAY MODE — Fixed Blue + White Blueprint Background
+   Never scrolls with content
+───────────────────────────────────────────── */
+:root body {
+  background-image:
     linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-  background-size: 24px 24px;
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(160deg, #DBEAFE 0%, #EFF6FF 30%, #FFFFFF 55%, #DBEAFE 80%, #BFDBFE 100%);
+  background-size: 28px 28px, 28px 28px, 100% 100%;
+  background-attachment: fixed, fixed, fixed;
+}
+
+/* ─────────────────────────────────────────────
+   NIGHT MODE — Fixed Deep Navy + Half-Moon Background
+───────────────────────────────────────────── */
+:root[data-theme="dark"] body {
+  background-image:
+    radial-gradient(ellipse at 80% 12%, rgba(250, 204, 21, 0.18) 0%, transparent 32%),
+    radial-gradient(ellipse at 82% 10%, rgba(15, 25, 50, 0.98) 0%, transparent 14%),
+    radial-gradient(ellipse at 20% 80%, rgba(99, 102, 241, 0.12) 0%, transparent 40%),
+    linear-gradient(to right, rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.04) 1px, transparent 1px),
+    linear-gradient(160deg, #060D1A 0%, #0C1733 40%, #091326 70%, #05080F 100%);
+  background-size: auto, auto, auto, 28px 28px, 28px 28px, 100% 100%;
+  background-attachment: fixed, fixed, fixed, fixed, fixed, fixed;
+}
+
+/* ─────────────────────────────────────────────
+   HALF-MOON — Static glowing crescent in top-right
+   (dark mode only, using ::before on html)
+───────────────────────────────────────────── */
+:root[data-theme="dark"] html::before {
+  content: "";
+  position: fixed;
+  top: 48px;
+  right: 72px;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 50%, #FEFCE8 0%, #FDE047 20%, #FACC15 45%, transparent 70%);
+  box-shadow:
+    0 0 30px 12px rgba(250, 204, 21, 0.35),
+    0 0 60px 24px rgba(250, 204, 21, 0.15),
+    0 0 100px 40px rgba(250, 204, 21, 0.06);
+  /* Crescent mask: a slightly offset dark circle cuts the right side */
+  -webkit-mask-image: radial-gradient(circle at 70% 50%, transparent 38%, black 48%);
+  mask-image: radial-gradient(circle at 70% 50%, transparent 38%, black 48%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─────────────────────────────────────────────
+   Blueprint Drafting Grid (legacy class, still used)
+───────────────────────────────────────────── */
+.blueprint-grid {
+  /* Body now uses background-image directly */
 }
 
 .blueprint-grid-dense {
-  background-image: 
+  background-image:
     linear-gradient(to right, rgba(71, 85, 105, 0.05) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(71, 85, 105, 0.05) 1px, transparent 1px);
   background-size: 12px 12px;
 }
 
-/* Custom architectural hairline borders */
+/* ─────────────────────────────────────────────
+   CARDS / PANELS
+───────────────────────────────────────────── */
 .drafting-card {
-  background-color: #FFFFFF;
-  border: 1px solid #E2DDD5;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.02), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
+  background-color: var(--card-bg);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04);
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .drafting-card:hover {
-  border-color: #CBD5E1;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  border-color: var(--card-hover-border);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.06);
 }
 
-/* Technical blueprint corner ticks */
+/* ─────────────────────────────────────────────
+   DARK MODE — Tailwind class overrides via CSS
+───────────────────────────────────────────── */
+:root[data-theme="dark"] .bg-white {
+  background-color: var(--card-bg) !important;
+}
+
+:root[data-theme="dark"] .bg-\[\#FAF8F5\] {
+  background-color: #0F1C2E !important;
+}
+
+:root[data-theme="dark"] .bg-stone-50 {
+  background-color: #111827 !important;
+}
+
+:root[data-theme="dark"] .bg-stone-100 {
+  background-color: #1E2D45 !important;
+}
+
+:root[data-theme="dark"] .text-stone-900 {
+  color: #E2E8F0 !important;
+}
+
+:root[data-theme="dark"] .text-stone-800 {
+  color: #CBD5E1 !important;
+}
+
+:root[data-theme="dark"] .text-stone-700 {
+  color: #94A3B8 !important;
+}
+
+:root[data-theme="dark"] .text-stone-600 {
+  color: #64748B !important;
+}
+
+:root[data-theme="dark"] .text-stone-500 {
+  color: #475569 !important;
+}
+
+:root[data-theme="dark"] .text-stone-400 {
+  color: #334155 !important;
+}
+
+:root[data-theme="dark"] .border-\[\#E2DDD5\] {
+  border-color: var(--border-blueprint) !important;
+}
+
+:root[data-theme="dark"] .border-stone-200 {
+  border-color: #1E2D45 !important;
+}
+
+:root[data-theme="dark"] .bg-\[\#1E293B\] {
+  background-color: #0F172A !important;
+}
+
+:root[data-theme="dark"] .border-dashed {
+  border-color: #1E2D45 !important;
+}
+
+/* ─────────────────────────────────────────────
+   Technical blueprint corner ticks
+───────────────────────────────────────────── */
 .corner-ticks {
   position: relative;
 }
@@ -77,21 +226,90 @@ body {
   pointer-events: none;
 }
 
-/* Clean technical scrollbar */
+/* ─────────────────────────────────────────────
+   SCROLLBAR
+───────────────────────────────────────────── */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #FAF8F5;
+  background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #CBD5E1;
+  background: var(--scrollbar-thumb);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94A3B8;
+}
+
+/* ─────────────────────────────────────────────
+   MOBILE TOUCH TARGETS (≥ 44px) — Android compat
+───────────────────────────────────────────── */
+@media (max-width: 768px) {
+  button {
+    min-height: 44px;
+  }
+
+  input[type="text"],
+  input[type="search"],
+  textarea {
+    min-height: 44px;
+    font-size: 16px; /* Prevents iOS zoom on focus */
+  }
+
+  /* Stack navbar actions on mobile */
+  header .flex.items-center.space-x-2 {
+    gap: 8px;
+  }
+
+  /* Full-width modals on mobile */
+  .fixed.inset-0.flex.items-center.justify-center.p-4 > div {
+    max-height: 95vh;
+    margin: 0;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   PATH COPY BUTTON (Feature 4)
+───────────────────────────────────────────── */
+.path-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  border: 1px solid var(--border-blueprint);
+  background: var(--input-bg);
+  color: var(--ink-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 300px;
+}
+
+.path-copy-btn:hover {
+  border-color: var(--ochre-accent);
+  color: var(--ochre-accent);
+}
+
+/* ─────────────────────────────────────────────
+   TRANSITIONS
+───────────────────────────────────────────── */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+
+/* Override transition for transforms/animations */
+.animate-spin,
+.animate-pulse {
+  transition: none !important;
 }

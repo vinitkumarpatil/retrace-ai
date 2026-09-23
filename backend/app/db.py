@@ -1,6 +1,8 @@
+import hashlib
 import json
 import logging
 import os
+import re
 import sqlite3
 import uuid
 from datetime import datetime
@@ -14,6 +16,39 @@ logger = logging.getLogger(__name__)
 DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 SQLITE_DB_PATH = os.path.join(DATA_DIR, "retrace.db")
+
+def compute_content_hash(content: str) -> str:
+    """Compute SHA-256 hash of content for deduplication."""
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()[:32]
+
+def parse_date_for_sorting(date_str: str) -> str:
+    """Extract sortable date string from various date formats."""
+    if not date_str:
+        return "9999-99-99"
+    # YYYY-MM-DD format
+    m = re.search(r'(\d{4}-\d{2}-\d{2})', date_str)
+    if m:
+        return m.group(1)
+    # Month DD, YYYY
+    months = {"january":"01","february":"02","march":"03","april":"04","may":"05","june":"06",
+              "july":"07","august":"08","september":"09","october":"10","november":"11","december":"12"}
+    m = re.search(r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,\s*(\d{4}))?', date_str, re.IGNORECASE)
+    if m:
+        month = months.get(m.group(1).lower(), "01")
+        day = m.group(2).zfill(2)
+        year = m.group(3) or "9999"
+        return f"{year}-{month}-{day}"
+    # Q1-Q4 YYYY
+    m = re.search(r'Q([1-4])\s+(\d{4})', date_str, re.IGNORECASE)
+    if m:
+        q = int(m.group(1))
+        month = str((q - 1) * 3 + 1).zfill(2)
+        return f"{m.group(2)}-{month}-01"
+    # Fallback: try to find any 4-digit year
+    m = re.search(r'(\d{4})', date_str)
+    if m:
+        return f"{m.group(1)}-01-01"
+    return "9999-99-99"
 
 class DatabaseClient:
     def __init__(self):
@@ -53,7 +88,14 @@ class DatabaseClient:
                 source_type TEXT NOT NULL,
                 raw_content TEXT NOT NULL,
                 metadata TEXT DEFAULT '{}',
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                path TEXT,
+                url TEXT,
+                content_hash TEXT,
+                project TEXT,
+                modified_at TEXT,
+                indexed_at TEXT,
+                index_status TEXT DEFAULT 'indexed'
             )
         """)
         cursor.execute("""
@@ -104,15 +146,25 @@ class DatabaseClient:
                 created_at TEXT NOT NULL
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS query_cache (
+                query_hash TEXT PRIMARY KEY,
+                result TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                hit_count INTEGER DEFAULT 0
+            )
+        """)
         conn.commit()
         conn.close()
         logger.info(f"Initialized local SQLite storage at {SQLITE_DB_PATH}")
 
     # --- Document & Chunk Storage ---
 
-    async def insert_document(self, title: str, source_type: str, raw_content: str, metadata: Dict[str, Any]) -> str:
+    async def insert_document(self, title: str, source_type: str, raw_content: str, metadata: Dict[str, Any],
+                               path: str = None, url: str = None, project: str = None) -> str:
         doc_id = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
+        content_hash = compute_content_hash(raw_content)
 
         if self.use_supabase and self._supabase_client:
             try:
@@ -122,7 +174,13 @@ class DatabaseClient:
                     "source_type": source_type,
                     "raw_content": raw_content,
                     "metadata": metadata,
-                    "created_at": now
+                    "created_at": now,
+                    "path": path,
+                    "url": url,
+                    "content_hash": content_hash,
+                    "project": project,
+                    "indexed_at": now,
+                    "index_status": "indexed"
                 }).execute()
                 return doc_id
             except Exception as e:
@@ -130,8 +188,8 @@ class DatabaseClient:
 
         conn = self._get_sqlite_conn()
         conn.execute(
-            "INSERT INTO documents (id, title, source_type, raw_content, metadata, created_at) VALUES (?, ?, ?, ?, ?, ?)",
-            (doc_id, title, source_type, raw_content, json.dumps(metadata), now)
+            "INSERT INTO documents (id, title, source_type, raw_content, metadata, created_at, path, url, content_hash, project, indexed_at, index_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (doc_id, title, source_type, raw_content, json.dumps(metadata), now, path, url, content_hash, project, now, "indexed")
         )
         conn.commit()
         conn.close()
@@ -319,8 +377,9 @@ class DatabaseClient:
 
     # --- Retrieval Operations ---
 
-    async def search_chunks_by_vector(self, query_embedding: List[float], match_count: int = 6) -> List[Dict[str, Any]]:
-        """Find most similar chunks via vector cosine distance."""
+    async def search_chunks_by_vector(self, query_embedding: List[float], match_count: int = 6,
+                                       project: str = None, source_type: str = None) -> List[Dict[str, Any]]:
+        """Find most similar chunks via vector cosine distance with optional metadata filtering."""
         if self.use_supabase and self._supabase_client:
             try:
                 response = self._supabase_client.rpc(
@@ -339,11 +398,26 @@ class DatabaseClient:
         # Local NumPy Cosine Similarity over SQLite chunks
         conn = self._get_sqlite_conn()
         cursor = conn.cursor()
-        cursor.execute("""
-            SELECT c.id, c.document_id, c.chunk_index, c.chunk_text, c.embedding, c.metadata, d.title as doc_title, d.source_type
+        
+        # Build query with optional metadata filters
+        where_clauses = []
+        params = []
+        if project:
+            where_clauses.append("d.project = ?")
+            params.append(project)
+        if source_type:
+            where_clauses.append("d.source_type = ?")
+            params.append(source_type)
+        
+        where_sql = (" AND " + " AND ".join(where_clauses)) if where_clauses else ""
+        
+        cursor.execute(f"""
+            SELECT c.id, c.document_id, c.chunk_index, c.chunk_text, c.embedding, c.metadata, 
+                   d.title as doc_title, d.source_type, d.path, d.url, d.content_hash, d.project
             FROM document_chunks c
             JOIN documents d ON c.document_id = d.id
-        """)
+            {where_sql}
+        """, params)
         rows = cursor.fetchall()
         conn.close()
 
@@ -373,14 +447,19 @@ class DatabaseClient:
                 "similarity": similarity,
                 "document_title": r["doc_title"],
                 "source_type": r["source_type"],
-                "metadata": json.loads(r["metadata"] or "{}")
+                "metadata": json.loads(r["metadata"] or "{}"),
+                "path": r["path"],
+                "url": r["url"],
+                "content_hash": r["content_hash"],
+                "project": r["project"]
             })
 
         results.sort(key=lambda x: x["similarity"], reverse=True)
         return results[:match_count]
 
-    async def search_chunks_by_keywords(self, query_text: str, match_count: int = 6) -> List[Dict[str, Any]]:
-        """Keyword matching across document chunks."""
+    async def search_chunks_by_keywords(self, query_text: str, match_count: int = 6,
+                                         project: str = None, source_type: str = None) -> List[Dict[str, Any]]:
+        """Keyword matching across document chunks with optional metadata filtering."""
         keywords = [k.lower() for k in query_text.split() if len(k) > 2]
         if not keywords:
             return []
@@ -392,11 +471,23 @@ class DatabaseClient:
         conditions = " OR ".join(["LOWER(c.chunk_text) LIKE ?" for _ in keywords])
         params = [f"%{k}%" for k in keywords]
         
+        # Add metadata filters
+        where_clauses = [f"({conditions})"]
+        if project:
+            where_clauses.append("d.project = ?")
+            params.append(project)
+        if source_type:
+            where_clauses.append("d.source_type = ?")
+            params.append(source_type)
+        
+        where_sql = " AND ".join(where_clauses)
+        
         query_sql = f"""
-            SELECT c.id, c.document_id, c.chunk_index, c.chunk_text, c.metadata, d.title as doc_title, d.source_type
+            SELECT c.id, c.document_id, c.chunk_index, c.chunk_text, c.metadata, 
+                   d.title as doc_title, d.source_type, d.path, d.url, d.content_hash, d.project
             FROM document_chunks c
             JOIN documents d ON c.document_id = d.id
-            WHERE {conditions}
+            WHERE {where_sql}
             LIMIT 20
         """
         cursor.execute(query_sql, params)
@@ -415,7 +506,11 @@ class DatabaseClient:
                 "keyword_score": match_score,
                 "document_title": r["doc_title"],
                 "source_type": r["source_type"],
-                "metadata": json.loads(r["metadata"] or "{}")
+                "metadata": json.loads(r["metadata"] or "{}"),
+                "path": r["path"],
+                "url": r["url"],
+                "content_hash": r["content_hash"],
+                "project": r["project"]
             })
 
         results.sort(key=lambda x: x["keyword_score"], reverse=True)
@@ -426,6 +521,7 @@ class DatabaseClient:
         cursor = conn.cursor()
         cursor.execute("""
             SELECT d.id, d.title, d.source_type, d.raw_content, d.metadata, d.created_at,
+                   d.path, d.url, d.content_hash, d.project, d.indexed_at, d.index_status,
                    (SELECT COUNT(*) FROM extracted_entities WHERE document_id = d.id) as entity_count,
                    (SELECT COUNT(*) FROM extracted_events WHERE document_id = d.id) as event_count
             FROM documents d
@@ -442,11 +538,81 @@ class DatabaseClient:
                 "content_preview": r["raw_content"][:200] + "...",
                 "metadata": json.loads(r["metadata"] or "{}"),
                 "created_at": r["created_at"],
+                "path": r["path"],
+                "url": r["url"],
+                "content_hash": r["content_hash"],
+                "project": r["project"],
+                "indexed_at": r["indexed_at"],
+                "index_status": r["index_status"],
                 "entity_count": r["entity_count"],
                 "event_count": r["event_count"]
             }
             for r in rows
         ]
+
+    async def get_document_by_id(self, doc_id: str) -> Optional[Dict[str, Any]]:
+        conn = self._get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT d.id, d.title, d.source_type, d.raw_content, d.metadata, d.created_at,
+                   d.path, d.url, d.content_hash, d.project, d.indexed_at, d.index_status
+            FROM documents d
+            WHERE d.id = ?
+        """, (doc_id,))
+        r = cursor.fetchone()
+        conn.close()
+        if not r:
+            return None
+        return {
+            "id": r["id"],
+            "title": r["title"],
+            "source_type": r["source_type"],
+            "raw_content": r["raw_content"],
+            "metadata": json.loads(r["metadata"] or "{}"),
+            "created_at": r["created_at"],
+            "path": r["path"],
+            "url": r["url"],
+            "content_hash": r["content_hash"],
+            "project": r["project"],
+            "indexed_at": r["indexed_at"],
+            "index_status": r["index_status"]
+        }
+
+    async def check_content_hash(self, content_hash: str) -> Optional[str]:
+        """Check if content with this hash already exists. Returns doc_id if found."""
+        conn = self._get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM documents WHERE content_hash = ?", (content_hash,))
+        r = cursor.fetchone()
+        conn.close()
+        return r["id"] if r else None
+
+    async def get_cache(self, query_hash: str) -> Optional[Dict[str, Any]]:
+        """Get cached query result."""
+        conn = self._get_sqlite_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT result, created_at, hit_count FROM query_cache WHERE query_hash = ?", (query_hash,))
+        r = cursor.fetchone()
+        conn.close()
+        if not r:
+            return None
+        # Update hit count
+        conn = self._get_sqlite_conn()
+        conn.execute("UPDATE query_cache SET hit_count = hit_count + 1 WHERE query_hash = ?", (query_hash,))
+        conn.commit()
+        conn.close()
+        return {"result": json.loads(r["result"]), "created_at": r["created_at"], "hit_count": r["hit_count"] + 1}
+
+    async def set_cache(self, query_hash: str, result: Dict[str, Any]):
+        """Store query result in cache."""
+        now = datetime.utcnow().isoformat()
+        conn = self._get_sqlite_conn()
+        conn.execute(
+            "INSERT OR REPLACE INTO query_cache (query_hash, result, created_at, hit_count) VALUES (?, ?, ?, 0)",
+            (query_hash, json.dumps(result), now)
+        )
+        conn.commit()
+        conn.close()
 
     async def get_all_entities_and_relationships(self, document_ids: Optional[List[str]] = None) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
         conn = self._get_sqlite_conn()

@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, Upload, FileText, Globe, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
-import { ingestFile, ingestText, ingestUrl } from '@/lib/api';
+import React, { useState, useRef, useCallback } from 'react';
+import { X, Upload, FileText, Globe, Music, CheckCircle2, AlertCircle, Loader2, Mic } from 'lucide-react';
+import { ingestFile, ingestText, ingestUrl, ingestAudio } from '@/lib/api';
 
 interface IngestionZoneProps {
   isOpen: boolean;
@@ -10,15 +10,58 @@ interface IngestionZoneProps {
   onSuccess: () => void;
 }
 
+type TabType = 'file' | 'audio' | 'text' | 'url';
+
 export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZoneProps) {
-  const [tab, setTab] = useState<'file' | 'text' | 'url'>('file');
+  const [tab, setTab] = useState<TabType>('file');
   const [file, setFile] = useState<File | null>(null);
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [audioTitle, setAudioTitle] = useState('');
   const [textTitle, setTextTitle] = useState('');
   const [textContent, setTextContent] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [urlTitle, setUrlTitle] = useState('');
+  const [project, setProject] = useState('Phoenix');
   const [isLoading, setIsLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; isError?: boolean } | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
+
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const droppedFiles = e.dataTransfer.files;
+    if (droppedFiles.length === 0) return;
+
+    const droppedFile = droppedFiles[0];
+    const ext = '.' + droppedFile.name.split('.').pop()?.toLowerCase();
+
+    const audioExts = ['.mp3', '.wav', '.m4a', '.ogg', '.webm', '.flac', '.aac', '.wma', '.opus'];
+    if (audioExts.includes(ext)) {
+      setAudioFile(droppedFile);
+      setTab('audio');
+    } else {
+      setFile(droppedFile);
+      setTab('file');
+    }
+  }, []);
 
   if (!isOpen) return null;
 
@@ -28,7 +71,7 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     setIsLoading(true);
     setStatusMessage(null);
     try {
-      const res = await ingestFile(file);
+      const res = await ingestFile(file, project);
       setStatusMessage({ text: res.message });
       setFile(null);
       setTimeout(() => {
@@ -42,13 +85,34 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     }
   };
 
+  const handleAudioUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!audioFile) return;
+    setIsLoading(true);
+    setStatusMessage(null);
+    try {
+      const res = await ingestAudio(audioFile, project, audioTitle.trim() || undefined);
+      setStatusMessage({ text: res.message });
+      setAudioFile(null);
+      setAudioTitle('');
+      setTimeout(() => {
+        onSuccess();
+        onClose();
+      }, 1200);
+    } catch (err: any) {
+      setStatusMessage({ text: err.message || 'Audio ingestion failed', isError: true });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleTextUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!textTitle.trim() || !textContent.trim()) return;
     setIsLoading(true);
     setStatusMessage(null);
     try {
-      const res = await ingestText(textTitle.trim(), textContent.trim());
+      const res = await ingestText(textTitle.trim(), textContent.trim(), 'text', project);
       setStatusMessage({ text: res.message });
       setTextTitle('');
       setTextContent('');
@@ -69,7 +133,7 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     setIsLoading(true);
     setStatusMessage(null);
     try {
-      const res = await ingestUrl(urlInput.trim(), urlTitle.trim() || undefined);
+      const res = await ingestUrl(urlInput.trim(), urlTitle.trim() || undefined, project);
       setStatusMessage({ text: res.message });
       setUrlInput('');
       setUrlTitle('');
@@ -84,9 +148,21 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
     }
   };
 
+  const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
+    { id: 'file', label: 'Upload File', icon: <Upload className="w-3.5 h-3.5" /> },
+    { id: 'audio', label: 'Audio / Voice', icon: <Music className="w-3.5 h-3.5" /> },
+    { id: 'text', label: 'Notes / RFC', icon: <FileText className="w-3.5 h-3.5" /> },
+    { id: 'url', label: 'Web URL', icon: <Globe className="w-3.5 h-3.5" /> },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs">
-      <div className="w-full max-w-xl bg-white border border-[#E2DDD5] rounded-md shadow-xl overflow-hidden relative corner-ticks">
+      <div
+        className="w-full max-w-xl bg-white border border-[#E2DDD5] rounded-md shadow-xl overflow-hidden relative corner-ticks"
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
         
         {/* Modal Header */}
         <div className="flex items-center justify-between p-4 border-b border-[#E2DDD5] bg-[#FAF8F5]">
@@ -106,54 +182,57 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
 
         {/* Tab Selection */}
         <div className="flex border-b border-[#E2DDD5] bg-stone-50 text-xs font-mono">
-          <button
-            onClick={() => setTab('file')}
-            className={`flex-1 py-2.5 px-4 text-center border-r border-[#E2DDD5] flex items-center justify-center space-x-1.5 transition-colors ${
-              tab === 'file' ? 'bg-white font-bold text-stone-900 border-b-2 border-b-amber-500' : 'text-stone-500 hover:text-stone-900'
-            }`}
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span>Upload PDF / Image</span>
-          </button>
-          <button
-            onClick={() => setTab('text')}
-            className={`flex-1 py-2.5 px-4 text-center border-r border-[#E2DDD5] flex items-center justify-center space-x-1.5 transition-colors ${
-              tab === 'text' ? 'bg-white font-bold text-stone-900 border-b-2 border-b-amber-500' : 'text-stone-500 hover:text-stone-900'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>Notes / Slack / RFC</span>
-          </button>
-          <button
-            onClick={() => setTab('url')}
-            className={`flex-1 py-2.5 px-4 text-center flex items-center justify-center space-x-1.5 transition-colors ${
-              tab === 'url' ? 'bg-white font-bold text-stone-900 border-b-2 border-b-amber-500' : 'text-stone-500 hover:text-stone-900'
-            }`}
-          >
-            <Globe className="w-3.5 h-3.5" />
-            <span>Web Documentation</span>
-          </button>
+          {tabs.map((t, i) => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`flex-1 py-2.5 px-3 text-center flex items-center justify-center space-x-1.5 transition-colors ${
+                i < tabs.length - 1 ? 'border-r border-[#E2DDD5]' : ''
+              } ${
+                tab === t.id ? 'bg-white font-bold text-stone-900 border-b-2 border-b-amber-500' : 'text-stone-500 hover:text-stone-900'
+              }`}
+            >
+              {t.icon}
+              <span>{t.label}</span>
+            </button>
+          ))}
         </div>
 
         {/* Body Content */}
         <div className="p-6">
+          
+          {/* Project Selector */}
+          <div className="mb-4">
+            <label className="block text-[10px] font-mono uppercase text-stone-500 font-bold tracking-wider mb-1.5">
+              PROJECT
+            </label>
+            <select
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E2DDD5] rounded text-xs font-mono text-stone-900 focus:outline-none focus:border-amber-400"
+            >
+              <option value="Phoenix">Project Phoenix</option>
+              <option value="default">General</option>
+            </select>
+          </div>
           
           {/* File Tab */}
           {tab === 'file' && (
             <form onSubmit={handleFileUpload} className="space-y-4">
               <div className="border-2 border-dashed border-[#E2DDD5] hover:border-amber-400 rounded-md p-8 text-center bg-[#FAF8F5] transition-colors cursor-pointer relative">
                 <input
+                  ref={fileInputRef}
                   type="file"
-                  accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md"
+                  accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.md,.json,.csv,.doc,.docx,.py,.js,.ts,.html,.css,.xml,.yml,.yaml"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
                 />
                 <Upload className="w-8 h-8 text-stone-400 mx-auto mb-2" />
                 <p className="text-xs font-mono font-medium text-stone-700">
-                  {file ? file.name : "Click or drag PDF, screenshot, or architecture diagram"}
+                  {file ? file.name : "Click or drag PDF, screenshot, code, or document"}
                 </p>
                 <p className="text-[11px] font-mono text-stone-400 mt-1">
-                  Supports PDF text extraction & Gemini Vision OCR
+                  PDF text extraction, Gemini Vision OCR, text/code parsing
                 </p>
               </div>
 
@@ -164,6 +243,58 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
               >
                 {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-amber-300" /> : <Upload className="w-4 h-4 text-amber-300" />}
                 <span>{isLoading ? "Ingesting & Extracting Intelligence..." : "Process & Index File"}</span>
+              </button>
+            </form>
+          )}
+
+          {/* Audio Tab */}
+          {tab === 'audio' && (
+            <form onSubmit={handleAudioUpload} className="space-y-4">
+              <div className="border-2 border-dashed border-[#E2DDD5] hover:border-amber-400 rounded-md p-8 text-center bg-[#FAF8F5] transition-colors cursor-pointer relative">
+                <input
+                  ref={audioInputRef}
+                  type="file"
+                  accept=".mp3,.wav,.m4a,.ogg,.webm,.flac,.aac,.wma,.opus,audio/*"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    setAudioFile(f);
+                  }}
+                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                />
+                <Mic className="w-8 h-8 text-stone-400 mx-auto mb-2" />
+                <p className="text-xs font-mono font-medium text-stone-700">
+                  {audioFile ? audioFile.name : "Click or drag an audio file here"}
+                </p>
+                <p className="text-[11px] font-mono text-stone-400 mt-1">
+                  MP3, WAV, M4A, OGG, WebM, FLAC — AI transcription + entity extraction
+                </p>
+                {audioFile && (
+                  <p className="text-[10px] font-mono text-stone-500 mt-2">
+                    {(audioFile.size / (1024 * 1024)).toFixed(1)} MB — {audioFile.type || 'audio'}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-mono uppercase text-stone-500 mb-1">
+                  Optional Title (auto-generated if empty)
+                </label>
+                <input
+                  type="text"
+                  value={audioTitle}
+                  onChange={(e) => setAudioTitle(e.target.value)}
+                  placeholder="e.g. Sprint Planning Meeting, Architecture Review"
+                  className="w-full px-3 py-2 bg-[#FAF8F5] border border-[#E2DDD5] rounded text-xs font-mono text-stone-900 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={!audioFile || isLoading}
+                className="w-full py-2.5 bg-[#1E293B] hover:bg-stone-800 disabled:bg-stone-300 text-white rounded text-xs font-mono font-semibold flex items-center justify-center space-x-2 transition-all shadow-xs"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin text-amber-300" /> : <Music className="w-4 h-4 text-amber-300" />}
+                <span>{isLoading ? "Transcribing & Extracting Intelligence..." : "Transcribe & Ingest Audio"}</span>
               </button>
             </form>
           )}
@@ -258,6 +389,16 @@ export default function IngestionZone({ isOpen, onClose, onSuccess }: IngestionZ
             }`}>
               {statusMessage.isError ? <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" /> : <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
               <span>{statusMessage.text}</span>
+            </div>
+          )}
+
+          {/* Drag-Drop Overlay */}
+          {isDragOver && (
+            <div className="absolute inset-0 bg-amber-50/90 border-2 border-dashed border-amber-400 flex items-center justify-center z-50 pointer-events-none">
+              <div className="text-center">
+                <Upload className="w-12 h-12 text-amber-600 mx-auto mb-2 animate-bounce" />
+                <p className="text-sm font-mono font-bold text-amber-800">DROP FILE OR AUDIO HERE</p>
+              </div>
             </div>
           )}
 

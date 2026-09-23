@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ShieldCheck, AlertTriangle, AlertCircle, Bookmark, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, AlertTriangle, AlertCircle, Bookmark, CheckCircle2, Zap, Sparkles } from 'lucide-react';
 
 interface NarrativeCardProps {
   directAnswer: string;
@@ -9,6 +9,7 @@ interface NarrativeCardProps {
   confidenceScore: 'high' | 'medium' | 'low';
   confidenceRationale: string;
   query: string;
+  backendOnly?: boolean;
 }
 
 export default function NarrativeCard({
@@ -17,6 +18,7 @@ export default function NarrativeCard({
   confidenceScore,
   confidenceRationale,
   query,
+  backendOnly,
 }: NarrativeCardProps) {
   
   // Style config for confidence badge
@@ -66,15 +68,38 @@ export default function NarrativeCard({
               RECONSTRUCTED CONTEXT & REASONING
             </h2>
             <p className="text-xs font-mono text-stone-500">
-              TARGET INQUIRY: "{query}"
+              TARGET INQUIRY: &quot;{query}&quot;
             </p>
           </div>
         </div>
 
-        {/* Confidence Stamp */}
-        <div className={`flex items-center space-x-2 px-3 py-1 rounded border ${confidenceConfig.bg} ${confidenceConfig.border} ${confidenceConfig.text} text-xs font-mono font-semibold`}>
-          <ConfidenceIcon className="w-4 h-4" />
-          <span>{confidenceConfig.label}</span>
+        <div className="flex items-center gap-2">
+          {/* Search Mode Indicator */}
+          {backendOnly !== undefined && (
+            <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded border text-xs font-mono font-semibold ${
+              backendOnly
+                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                : 'bg-violet-50 text-violet-700 border-violet-200'
+            }`}>
+              {backendOnly ? (
+                <>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>BACKEND SEARCH</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>AI REASONING</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Confidence Stamp */}
+          <div className={`flex items-center space-x-2 px-3 py-1 rounded border ${confidenceConfig.bg} ${confidenceConfig.border} ${confidenceConfig.text} text-xs font-mono font-semibold`}>
+            <ConfidenceIcon className="w-4 h-4" />
+            <span>{confidenceConfig.label}</span>
+          </div>
         </div>
       </div>
 
