@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "ReTrace — AI Lost Context Recovery Engine",
-  description: "Reconstruct missing architectural and product decisions across documents, dates, and people.",
+  title: "Retrace — Intelligence Workspace",
+  description:
+    "Retrace reconstructs the organizational context behind decisions — the why, who, evidence, and what's still missing — from your documents, people, and events.",
 };
 
 export default function RootLayout({
@@ -12,9 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="console-bg min-h-screen text-console-ink antialiased selection:bg-cyan-400/30 selection:text-white">
-        {children}
+    <html lang="en" className="dark">
+      <body className="antialiased selection:bg-iris/30 selection:text-white">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
