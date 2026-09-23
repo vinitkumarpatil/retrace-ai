@@ -139,3 +139,26 @@ def extract_from_text(title: str, text: str, source_type: str = "text", metadata
             "char_count": len(text.strip()),
         }
     }
+
+
+AUDIO_EXTENSIONS = {'.mp3', '.wav', '.m4a', '.ogg', '.webm', '.flac', '.aac', '.wma', '.opus'}
+
+def is_audio_file(filename: str) -> bool:
+    """Check if a filename is an audio file based on extension."""
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in {ext.lstrip('.') for ext in AUDIO_EXTENSIONS}
+
+def get_audio_mime_type(filename: str) -> str:
+    """Map audio file extension to MIME type."""
+    ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else ''
+    mime_map = {
+        'mp3': 'audio/mpeg',
+        'wav': 'audio/wav',
+        'm4a': 'audio/mp4',
+        'ogg': 'audio/ogg',
+        'webm': 'audio/webm',
+        'flac': 'audio/flac',
+        'aac': 'audio/aac',
+        'wma': 'audio/x-ms-wma',
+        'opus': 'audio/opus',
+    }
+    return mime_map.get(ext, 'audio/mpeg')

@@ -12,11 +12,15 @@ from app.services.extractor import (
     extract_from_text,
     extract_from_pdf,
     extract_from_url,
-    chunk_text
+    chunk_text,
+    is_audio_file,
+    get_audio_mime_type,
+    AUDIO_EXTENSIONS
 )
 from app.services.gemini_service import (
     extract_structured_data_with_gemini,
-    extract_from_image_with_gemini
+    extract_from_image_with_gemini,
+    extract_from_audio_with_gemini
 )
 from app.services.embedding_service import generate_embeddings_batch
 from app.db import db, compute_content_hash
@@ -163,6 +167,9 @@ async def ingest_file_endpoint(
     elif any(lower_name.endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".webp"]) or "image" in content_type:
         mime = content_type or "image/png"
         doc_data = await extract_from_image_with_gemini(contents, filename, mime)
+    elif is_audio_file(filename) or "audio" in content_type:
+        mime = content_type or get_audio_mime_type(filename)
+        doc_data = await extract_from_audio_with_gemini(contents, filename, mime)
     elif lower_name.endswith(".json"):
         try:
             text_str = contents.decode("utf-8")
@@ -228,6 +235,61 @@ async def ingest_file_endpoint(
     )
 
 
+@router.post("/audio", response_model=IngestResponse)
+async def ingest_audio_endpoint(
+    file: UploadFile = File(...),
+    custom_title: Optional[str] = Form(None),
+    project: Optional[str] = Form(None),
+    relative_path: Optional[str] = Form(None)
+):
+    """Upload and transcribe an audio file (mp3, wav, m4a, ogg, webm, flac)."""
+    contents = await file.read()
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded audio file is empty.")
+
+    filename = file.filename or "uploaded_audio"
+    content_type = file.content_type or ""
+    mime = content_type or get_audio_mime_type(filename)
+
+    if not (is_audio_file(filename) or "audio" in content_type):
+        raise HTTPException(status_code=400, detail=f"File '{filename}' is not a recognized audio format.")
+
+    doc_data = await extract_from_audio_with_gemini(contents, filename, mime)
+
+    if custom_title:
+        doc_data["title"] = custom_title
+
+    file_path = relative_path or filename
+    if relative_path:
+        doc_data["metadata"]["relative_path"] = relative_path
+
+    chunks = chunk_text(doc_data["raw_content"])
+    extracted: ExtractedDocumentData = await extract_structured_data_with_gemini(
+        title=doc_data["title"],
+        text=doc_data["raw_content"]
+    )
+
+    doc_id, is_duplicate = await _persist_ingested_content(
+        doc_data, chunks, extracted,
+        path=file_path, project=project
+    )
+
+    content_hash = compute_content_hash(doc_data["raw_content"])
+
+    return IngestResponse(
+        success=True,
+        document_id=doc_id,
+        title=doc_data["title"],
+        source_type="audio",
+        chunk_count=len(chunks) if not is_duplicate else 0,
+        extracted_entities_count=len(extracted.entities) if not is_duplicate else 0,
+        extracted_events_count=len(extracted.events) if not is_duplicate else 0,
+        message=f"Successfully transcribed and ingested '{doc_data['title']}'" + (" (duplicate detected)" if is_duplicate else f" with {len(extracted.entities)} entities extracted."),
+        content_hash=content_hash,
+        is_duplicate=is_duplicate
+    )
+
+
 @router.post("/browser", response_model=IngestResponse)
 async def ingest_browser_context(payload: TextIngestRequest):
     """Ingest browser context captured by the Chrome extension."""
@@ -284,6 +346,7 @@ SUPPORTED_EXTENSIONS = {
     '.sql', '.sh', '.bash', '.zsh',
     '.rst', '.adoc',
     '.docx',
+    '.mp3', '.wav', '.m4a', '.ogg', '.webm', '.flac', '.aac', '.wma', '.opus',
 }
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB limit per file
@@ -376,6 +439,9 @@ async def _ingest_single_file(file_info: Dict[str, Any], project: str = None) ->
         elif ext in ['.png', '.jpg', '.jpeg', '.webp']:
             mime = file_info.get("mime_type", "image/png")
             doc_data = await extract_from_image_with_gemini(contents, filename, mime)
+        elif ext in AUDIO_EXTENSIONS:
+            mime = file_info.get("mime_type", get_audio_mime_type(filename))
+            doc_data = await extract_from_audio_with_gemini(contents, filename, mime)
         elif ext == '.docx':
             # Basic DOCX extraction - extract text from XML
             try:

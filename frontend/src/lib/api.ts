@@ -34,11 +34,14 @@ export async function ingestUrl(url: string, title?: string, project?: string): 
   return res.json();
 }
 
-export async function ingestFile(file: File, project?: string): Promise<IngestResponse> {
+export async function ingestFile(file: File, project?: string, relativePath?: string): Promise<IngestResponse> {
   const formData = new FormData();
   formData.append('file', file);
   if (project) {
     formData.append('project', project);
+  }
+  if (relativePath) {
+    formData.append('relative_path', relativePath);
   }
   const res = await fetch(`${API_BASE}/api/ingest/file`, {
     method: 'POST',
@@ -51,11 +54,35 @@ export async function ingestFile(file: File, project?: string): Promise<IngestRe
   return res.json();
 }
 
-export async function queryReconstruction(query: string, project?: string): Promise<ReconstructionResult> {
+export async function ingestAudio(file: File, project?: string, customTitle?: string): Promise<IngestResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (project) {
+    formData.append('project', project);
+  }
+  if (customTitle) {
+    formData.append('custom_title', customTitle);
+  }
+  const res = await fetch(`${API_BASE}/api/ingest/audio`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    throw new Error(err.detail || 'Failed to ingest audio');
+  }
+  return res.json();
+}
+
+export async function queryReconstruction(query: string, project?: string, selectedPaths?: string[]): Promise<ReconstructionResult> {
+  const payload: Record<string, any> = { query };
+  if (project) payload.project = project;
+  if (selectedPaths && selectedPaths.length > 0) payload.selected_paths = selectedPaths;
+
   const res = await fetch(`${API_BASE}/api/query`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query, project }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
@@ -74,8 +101,14 @@ export async function listDocuments(project?: string): Promise<DocumentItem[]> {
   return data.documents || [];
 }
 
-export async function searchDocuments(query: string, topK: number = 5): Promise<any> {
-  const res = await fetch(`${API_BASE}/api/search?q=${encodeURIComponent(query)}&top_k=${topK}`, { cache: 'no-store' });
+export async function searchDocuments(query: string, topK: number = 5, selectedPaths?: string[]): Promise<any> {
+  const params = new URLSearchParams();
+  params.append('q', query);
+  params.append('top_k', topK.toString());
+  if (selectedPaths && selectedPaths.length > 0) {
+    selectedPaths.forEach(p => params.append('selected_paths', p));
+  }
+  const res = await fetch(`${API_BASE}/api/search?${params.toString()}`, { cache: 'no-store' });
   if (!res.ok) throw new Error('Search failed');
   return res.json();
 }

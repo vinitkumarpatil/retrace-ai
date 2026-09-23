@@ -1,4 +1,4 @@
-export type SourceType = 'pdf' | 'image' | 'text' | 'url';
+export type SourceType = 'pdf' | 'image' | 'text' | 'url' | 'audio' | 'local';
 
 export interface DocumentItem {
   id: string;
@@ -15,6 +15,15 @@ export interface DocumentItem {
   index_status?: string;
   entity_count?: number;
   event_count?: number;
+}
+
+export interface LocalSourceItem {
+  id: string;
+  name: string;
+  rootPath: string;
+  fileCount: number;
+  indexedCount: number;
+  lastIndexed: string;
 }
 
 export interface EntityNode {
@@ -57,6 +66,7 @@ export interface Citation {
   quote: string;
   relevance: string;
   path?: string;
+  absolutePath?: string; // Full OS path, e.g. C:\Users\... for direct file:// opening
   url?: string;
   chunk_id?: string;
   score?: number;

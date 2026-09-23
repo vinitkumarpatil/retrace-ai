@@ -313,3 +313,116 @@ async def extract_from_image_with_gemini(image_bytes: bytes, filename: str, mime
             "raw_content": f"Image '{filename}' (Vision extraction error: {str(e)})",
             "metadata": {"filename": filename, "mime_type": mime_type, "error": str(e)}
         }
+
+
+AUDIO_TRANSCRIPTION_PROMPT = """You are ReTrace — an expert Forensic Knowledge Recovery Architect.
+Transcribe this audio recording accurately. Then analyze the transcript and provide:
+
+1. A clean, full transcription of everything said.
+2. A structured summary with:
+   - Key topics discussed
+   - Decisions made
+   - Action items
+   - People mentioned
+   - Dates/timelines mentioned
+   - Technical systems or tools referenced
+
+Format your response as:
+
+TRANSCRIPTION:
+[Full verbatim transcription]
+
+---
+SUMMARY:
+[2-3 paragraph summary of key points]
+
+KEY DECISIONS:
+- [Decision 1]
+- [Decision 2]
+
+ACTION ITEMS:
+- [Action 1]
+- [Action 2]
+
+PEOPLE MENTIONED:
+- [Person 1] - [Role/context if mentioned]
+- [Person 2]
+
+DATES/TIMELINES:
+- [Date/event pair]
+
+SYSTEMS/TOOLS:
+- [System 1] - [Context]
+"""
+
+
+async def extract_from_audio_with_gemini(audio_bytes: bytes, filename: str, mime_type: str) -> Dict[str, Any]:
+    """
+    Use Gemini Multimodal to transcribe and analyze audio files.
+    Supports mp3, wav, m4a, ogg, webm, flac audio formats.
+    """
+    api_key = settings.GEMINI_API_KEY.strip() if settings.GEMINI_API_KEY else ""
+    is_real_key = bool(api_key and not api_key.startswith("your_"))
+
+    doc_title = filename.rsplit('.', 1)[0].replace('_', ' ').replace('-', ' ').title()
+
+    if not is_real_key:
+        fallback_text = (
+            f"Audio file '{filename}' uploaded for transcription.\n"
+            f"Offline mode: Set GEMINI_API_KEY to enable AI-powered audio transcription.\n"
+            f"File size: {len(audio_bytes)} bytes. Format: {mime_type}"
+        )
+        return {
+            "title": doc_title,
+            "source_type": "audio",
+            "raw_content": fallback_text,
+            "metadata": {"filename": filename, "mime_type": mime_type, "size_bytes": len(audio_bytes)}
+        }
+
+    prompt = (
+        "Transcribe this audio recording in full. Then analyze the transcript to extract "
+        "all key information: decisions, action items, people, dates, and technical systems. "
+        "Be thorough and accurate."
+    )
+
+    try:
+        from google import genai
+        from google.genai import types
+        client = genai.Client(api_key=api_key)
+
+        audio_part = types.Part.from_bytes(data=audio_bytes, mime_type=mime_type)
+
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[prompt, audio_part]
+        )
+
+        transcription_text = response.text or ""
+
+        if not transcription_text.strip():
+            return {
+                "title": doc_title,
+                "source_type": "audio",
+                "raw_content": f"Audio file '{filename}' — transcription returned empty. The audio may be silent or corrupted.",
+                "metadata": {"filename": filename, "mime_type": mime_type, "size_bytes": len(audio_bytes)}
+            }
+
+        return {
+            "title": doc_title,
+            "source_type": "audio",
+            "raw_content": transcription_text,
+            "metadata": {
+                "filename": filename,
+                "mime_type": mime_type,
+                "size_bytes": len(audio_bytes),
+                "transcribed_via": "gemini-2.0-flash"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Audio transcription failed: {e}")
+        return {
+            "title": doc_title,
+            "source_type": "audio",
+            "raw_content": f"Audio file '{filename}' (Transcription error: {str(e)})",
+            "metadata": {"filename": filename, "mime_type": mime_type, "error": str(e)}
+        }
